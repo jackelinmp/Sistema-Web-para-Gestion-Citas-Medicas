@@ -19,6 +19,10 @@ abstract class ControlBase
     protected function ip(): ?string
     {
         $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+        // En la nube (Vercel) la petición llega por un proxy: la IP real es la primera de X-Forwarded-For
+        if ((getenv('VERCEL') || Config::obtener('TRUST_PROXY') === 'true') && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $ip = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
+        }
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : null;
     }
 

@@ -150,17 +150,68 @@ small, .suave { color: var(--texto-suave); font-size: var(--t-chico); }
 .cupo:hover, .cupo.elegido { background: var(--primario); color: #fff; }
 .cupo:disabled { border-color: var(--borde); color: var(--texto-suave); background: var(--superficie-2); cursor: not-allowed; }
 
-/* 12. PÁGINAS PÚBLICAS Y ADAPTACIÓN A CELULAR ------------------------ */
-body.publica { display: grid; place-items: center; min-height: 100vh; }
-body.publica .tarjeta { width: min(420px, 92vw); }
-@media (max-width: 760px) {
-  .cuerpo { flex-direction: column; }
-  .menu { width: auto; display: flex; overflow-x: auto; }
-  .menu .grupo { display: none; }
-  .fila, .fila-3 { grid-template-columns: 1fr; }
+/* 12. PÁGINAS PÚBLICAS Y ADAPTACIÓN A CELULAR Y TABLET (responsive) -- */
+body.publica { display: grid; place-items: center; min-height: 100vh; padding: var(--esp-4); }
+body.publica .tarjeta { width: min(420px, 100%); }
+.btn-menu { display: none; background: none; border: 0; padding: 6px; cursor: pointer; flex-direction: column; gap: 4px; }
+.btn-menu span { display: block; width: 22px; height: 2px; background: #fff; border-radius: 2px; transition: transform .2s, opacity .2s; }
+.barra .usuario { font-size: var(--t-chico); opacity: .95; }
+.enlace-barra { text-decoration: none; }
+.menu .enlace-celular { display: none; }
+.tabla-contenedor { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.paginacion { display: flex; align-items: center; justify-content: center; gap: var(--esp-3); margin-top: var(--esp-4); }
+.centrado { text-align: center; margin: 0; }
+.ancho-total { width: 100%; }
+.sin-salto { white-space: nowrap; }
+.enlace-largo { word-break: break-all; font-weight: 600; }
+.insignia.neutra { background: var(--superficie-2); color: var(--texto); font-weight: 600; }
+
+/* Tablet: menú más angosto */
+@media (max-width: 1024px) {
+  .menu { width: 190px; }
   .contenido { padding: var(--esp-4); }
-  .encabezado { flex-direction: column; align-items: flex-start; }
-  .tabla { display: block; overflow-x: auto; }
+  .fila-3 { grid-template-columns: 1fr 1fr; }
+}
+
+/* Celular: menú desplegable con el botón ☰, una columna y tablas con desplazamiento horizontal */
+@media (max-width: 760px) {
+  .barra { flex-wrap: wrap; gap: var(--esp-2) var(--esp-3); padding: 10px 14px; }
+  .btn-menu { display: flex; }
+  .barra .usuario { order: 3; width: 100%; }
+  .enlace-barra { display: none; }
+  .cuerpo { flex-direction: column; min-height: 0; }
+  .menu { display: none; width: auto; border-right: 0; border-bottom: 1px solid var(--borde); padding: var(--esp-2) 0; }
+  body.menu-abierto .menu { display: block; }
+  body.menu-abierto .menu .enlace-celular { display: block; }
+  body.menu-abierto .btn-menu span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  body.menu-abierto .btn-menu span:nth-child(2) { opacity: 0; }
+  body.menu-abierto .btn-menu span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  .menu .grupo { padding-top: var(--esp-2); }
+  .contenido { padding: var(--esp-3); max-width: 100%; }
+  .fila, .fila-3 { grid-template-columns: 1fr; }
+  .encabezado { flex-direction: column; align-items: stretch; }
+  .encabezado .btn { text-align: center; }
+  .filtros { flex-direction: column; align-items: stretch; }
+  .filtros label, .filtros input, .filtros select, .filtros .btn { width: 100%; }
+  .formulario, .formulario.ancho { max-width: 100%; }
+  .botones { flex-direction: column-reverse; }
+  .botones .btn { width: 100%; text-align: center; }
+  .tabla { display: block; overflow-x: auto; white-space: nowrap; }
+  .tabla td, .tabla th { padding: 8px 10px; }
+  .pasos { flex-wrap: wrap; }
+  .pasos li { flex: 1 1 45%; }
+  .resumen { grid-template-columns: 1fr; gap: 2px; }
+  .resumen dd { margin-bottom: var(--esp-2); }
+  .tarjeta { padding: var(--esp-5); }
+  .indicadores { grid-template-columns: 1fr 1fr; }
+  h2 { font-size: 19px; }
+}
+
+/* Celular pequeño */
+@media (max-width: 420px) {
+  .indicadores { grid-template-columns: 1fr; }
+  .cupos { grid-template-columns: repeat(3, 1fr); }
+  .pasos li { flex-basis: 100%; }
 }
 
 /* 13. AJUSTES DE ENLACES-CUPO Y CAMPOS DENTRO DE TABLAS (CU11, CU13, CU14) */

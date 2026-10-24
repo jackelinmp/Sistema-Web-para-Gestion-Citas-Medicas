@@ -22,4 +22,5 @@ return [
 
     ['grupo' => 'Administración'],
     ['texto' => 'Usuarios',            'ruta' => 'cuentas',        'modulo' => 'SEGURIDAD',              'accion' => 'C', 'listo' => true], // CU02 · Erika
+    ['texto' => 'Bitácora',            'ruta' => 'bitacora',       'modulo' => 'SEGURIDAD',              'accion' => 'C', 'listo' => true], // Bitácora · Erika
 ];

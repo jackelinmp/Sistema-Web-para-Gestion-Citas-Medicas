@@ -14,15 +14,21 @@ $rutaActual = $_GET['r'] ?? 'panel';
 </head>
 <body>
 <header class="barra">
+  <?php if ($usuario): ?>
+    <button type="button" class="btn-menu" aria-label="Abrir menú" aria-expanded="false" aria-controls="menu-principal">
+      <span></span><span></span><span></span>
+    </button>
+  <?php endif; ?>
   <span class="marca">Clínica Vida Salud</span>
   <?php if ($usuario): ?>
     <span class="usuario"><?= e($usuario['nombre']) ?> · <?= e($usuario['rol']) ?></span>
+    <a class="btn-enlace enlace-barra" href="?r=sesion/cambiar">Cambiar contraseña</a>
     <form method="post" action="?r=sesion/cerrar"><?= campoCsrf() ?><button class="btn-enlace">Cerrar sesión</button></form>
   <?php endif; ?>
 </header>
 <div class="cuerpo">
   <?php if ($usuario): ?>
-  <nav class="menu">
+  <nav class="menu" id="menu-principal">
     <?php
     // Agrupa las opciones visibles; un grupo sin opciones visibles no se muestra.
     $grupoPendiente = null;
@@ -36,6 +42,7 @@ $rutaActual = $_GET['r'] ?? 'panel';
       endif; ?>
       <a href="?r=<?= e($op['ruta']) ?>" class="<?= str_starts_with($rutaActual, $op['ruta']) ? 'activo' : '' ?>"><?= e($op['texto']) ?></a>
     <?php endforeach; ?>
+    <a href="?r=sesion/cambiar" class="enlace-celular <?= $rutaActual === 'sesion/cambiar' ? 'activo' : '' ?>">Cambiar contraseña</a>
   </nav>
   <?php endif; ?>
   <main class="contenido">

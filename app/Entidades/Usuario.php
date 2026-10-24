@@ -10,6 +10,7 @@ final class Usuario extends EntidadBase
     public function buscarPorCorreo(string $correo): ?array
     {
         $sql = 'SELECT u.id, u.persona_id, u.rol_id, u.correo, u.contrasena_hash, u.estado,
+                       u.debe_cambiar_contrasena, u.intentos_fallidos, u.bloqueado_hasta,
                        r.nombre AS rol, p.nombres || \' \' || p.apellidos AS nombre
                   FROM usuario u
                   JOIN rol r     ON r.id = u.rol_id
@@ -20,16 +21,56 @@ final class Usuario extends EntidadBase
         return $st->fetch() ?: null;
     }
 
-    public function registrarIntentoFallido(int $id): void
+    /** CU01: minutos que faltan para que termine el bloqueo temporal (0 = no está bloqueada). */
+    public function estaBloqueado(array $usuario): int
     {
-        $this->bd->prepare('UPDATE usuario SET intentos_fallidos = intentos_fallidos + 1 WHERE id = :id')
-                 ->execute(['id' => $id]);
+        if (empty($usuario['bloqueado_hasta'])) {
+            return 0;
+        }
+        $st = $this->bd->prepare('SELECT GREATEST(0, CEIL(EXTRACT(EPOCH FROM (CAST(:hasta AS timestamptz) - now())) / 60))');
+        $st->execute(['hasta' => $usuario['bloqueado_hasta']]);
+        return (int) $st->fetchColumn();
+    }
+
+    /**
+     * CU01: suma un intento fallido; al llegar a $intentosMax bloquea la cuenta $minutosBloqueo minutos
+     * y reinicia el contador. Devuelve ['intentos' => n, 'bloqueada' => bool].
+     */
+    public function registrarIntentoFallido(int $id, int $intentosMax = 3, int $minutosBloqueo = 15): array
+    {
+        $st = $this->bd->prepare(
+            'UPDATE usuario
+                SET intentos_fallidos = CASE WHEN intentos_fallidos + 1 >= :max1 THEN 0 ELSE intentos_fallidos + 1 END,
+                    bloqueado_hasta   = CASE WHEN intentos_fallidos + 1 >= :max2
+                                             THEN now() + make_interval(mins => :min) ELSE bloqueado_hasta END
+              WHERE id = :id
+          RETURNING intentos_fallidos, bloqueado_hasta IS NOT NULL AND bloqueado_hasta > now() AS bloqueada');
+        $st->execute(['max1' => $intentosMax, 'max2' => $intentosMax, 'min' => $minutosBloqueo, 'id' => $id]);
+        $r = $st->fetch();
+        return ['intentos' => (int) $r['intentos_fallidos'], 'bloqueada' => (bool) $r['bloqueada']];
     }
 
     public function registrarAcceso(int $id): void
     {
-        $this->bd->prepare('UPDATE usuario SET intentos_fallidos = 0, ultimo_acceso = now() WHERE id = :id')
+        $this->bd->prepare('UPDATE usuario SET intentos_fallidos = 0, bloqueado_hasta = NULL, ultimo_acceso = now() WHERE id = :id')
                  ->execute(['id' => $id]);
+    }
+
+    /** CU01: guarda la nueva contraseña cifrada (bcrypt) y desbloquea la cuenta. */
+    public function cambiarContrasena(int $usuario_id, string $contrasena): void
+    {
+        $this->bd->prepare('UPDATE usuario SET contrasena_hash = :hash, debe_cambiar_contrasena = FALSE,
+                                               intentos_fallidos = 0, bloqueado_hasta = NULL
+                             WHERE id = :id')
+                 ->execute(['hash' => password_hash($contrasena, PASSWORD_DEFAULT), 'id' => $usuario_id]);
+    }
+
+    /** CU01: contraseña actual cifrada, para verificarla antes de cambiarla. */
+    public function obtenerHash(int $id): ?string
+    {
+        $st = $this->bd->prepare('SELECT contrasena_hash FROM usuario WHERE id = :id');
+        $st->execute(['id' => $id]);
+        return $st->fetchColumn() ?: null;
     }
 
     /** CU02: lista de cuentas con nombre, correo, rol y estado; filtros por texto, rol y estado. */
