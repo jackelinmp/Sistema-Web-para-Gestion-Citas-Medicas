@@ -1,20 +1,24 @@
 <?php
+/**
+ * Controlador frontal: TODA petición entra por aquí (?r=modulo/accion).
+ * Solo la carpeta public/ es visible desde el navegador.
+ */
+declare(strict_types=1);
 
-use Illuminate\Foundation\Application;
-use Illuminate\Http\Request;
+define('RAIZ', dirname(__DIR__));
+require RAIZ . '/app/Nucleo/autoload.php';
+require RAIZ . '/app/Nucleo/funciones.php';
 
-define('LARAVEL_START', microtime(true));
+use App\Nucleo\Config;
+use App\Nucleo\Enrutador;
+use App\Nucleo\Sesion;
 
-// Determine if the application is in maintenance mode...
-if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
-    require $maintenance;
+Config::cargar(RAIZ . '/.env');
+date_default_timezone_set('America/La_Paz');
+if (Config::obtener('APP_DEBUG') !== 'true') {
+    ini_set('display_errors', '0');
 }
+Sesion::iniciar();
 
-// Register the Composer autoloader...
-require __DIR__.'/../vendor/autoload.php';
-
-// Bootstrap Laravel and handle the request...
-/** @var Application $app */
-$app = require_once __DIR__.'/../bootstrap/app.php';
-
-$app->handleRequest(Request::capture());
+$ruta = $_GET['r'] ?? (Sesion::usuario() ? 'panel' : 'sesion/formulario');
+(new Enrutador(require RAIZ . '/app/rutas.php'))->despachar($ruta, $_SERVER['REQUEST_METHOD']);
