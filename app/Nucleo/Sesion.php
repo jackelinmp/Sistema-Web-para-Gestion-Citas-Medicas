@@ -9,10 +9,21 @@ final class Sesion
     public static function iniciar(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
-            session_set_cookie_params(['httponly' => true, 'samesite' => 'Lax',
-                                       'secure' => (($_SERVER['HTTPS'] ?? '') === 'on')]);
+            if (Config::obtener('SESSION_DRIVER') === 'cookie') {
+                // En la nube (Vercel) no hay archivos persistentes: la sesión viaja cifrada en una cookie.
+                // La salida se guarda en un búfer y la sesión se escribe antes de enviarla.
+                ob_start();
+                session_set_save_handler(new SesionCookie((string) Config::obtener('APP_KEY')), false);
+                register_shutdown_function('session_write_close');
+            }
+            session_set_cookie_params(['httponly' => true, 'samesite' => 'Lax', 'secure' => self::esHttps()]);
             session_start();
         }
+    }
+
+    public static function esHttps(): bool
+    {
+        return ($_SERVER['HTTPS'] ?? '') === 'on' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
     }
 
     public static function abrir(array $usuario): void

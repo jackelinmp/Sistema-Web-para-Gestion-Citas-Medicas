@@ -9,6 +9,10 @@ final class Config
     public static function cargar(string $archivo): void
     {
         if (!is_file($archivo)) {
+            // En la nube no hay .env: los valores llegan como variables de entorno del servidor.
+            if (getenv('DB_HOST') !== false) {
+                return;
+            }
             throw new \RuntimeException('Falta el archivo .env (copie .env.example y complételo).');
         }
         foreach (file($archivo, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $linea) {
