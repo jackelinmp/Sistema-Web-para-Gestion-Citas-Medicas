@@ -1,0 +1,220 @@
+/* =====================================================================
+   CLÍNICA VIDA SALUD — SISTEMA DE DISEÑO (único archivo de estilos)
+   ---------------------------------------------------------------------
+   Reglas del equipo (ver docs/guia_interfaz.md):
+   1. Nadie escribe colores, tamaños ni estilos dentro de los archivos IU*.php
+      (prohibido style="..." y <style>). Solo se usan las clases de este archivo.
+   2. Los colores se usan SIEMPRE por variable: var(--primario), nunca #0f6e8c.
+   3. Si falta un componente, se pide a la responsable de diseño y se agrega
+      aquí en una rama propia (diseno/...). No se crean otros .css.
+   Paleta: terracota suave (--primario) sobre fondo crema (--fondo).
+   Vista de todos los componentes: http://localhost:8000/guia-estilos.html
+   ===================================================================== */
+
+/* 1. TOKENS ---------------------------------------------------------- */
+/* Paleta "sencilla y cálida": terracota suave + crema + texto café oscuro */
+:root {
+  /* Marca */
+  --primario: #b5573a;  --primario-osc: #8c3f27;  --primario-claro: #f7e6dc;
+  /* Superficies y texto */
+  --fondo: #fbf7f2;  --superficie: #ffffff;  --superficie-2: #f4ece3;
+  --borde: #e6d9cc;  --texto: #3b2f2a;  --texto-suave: #7a6a60;
+  /* Mensajes */
+  --exito: #e8f3e6;  --exito-t: #3d6b35;
+  --error: #fbe7e4;  --error-t: #a32f22;
+  --aviso: #fdf1dc;  --aviso-t: #8a5a10;
+  --info:  #f7e6dc;  --info-t:  #8c3f27;
+  /* Estados de la cita (RF10) */
+  --programada: #e5eefa;   --programada-t: #2f5d9a;
+  --confirmada: #e1f1ee;   --confirmada-t: #2e6f66;
+  --atendida: #e8f3e6;     --atendida-t: #3d6b35;
+  --cancelada: #efe9e4;    --cancelada-t: #7a6a60;
+  --inasistencia: #fde8d6; --inasistencia-t: #a14d12;
+  /* Medidas */
+  --radio: 8px;  --radio-g: 12px;
+  --esp-1: 4px;  --esp-2: 8px;  --esp-3: 12px;  --esp-4: 16px;  --esp-5: 24px;  --esp-6: 32px;
+  --fuente: "Segoe UI", system-ui, Roboto, Arial, sans-serif;
+  --t-chico: 13px;  --t-normal: 15px;  --t-titulo: 22px;
+  --sombra: 0 1px 3px rgba(90, 55, 35, .08);
+}
+
+/* 2. BASE ------------------------------------------------------------ */
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--fuente); font-size: var(--t-normal); color: var(--texto); background: var(--fondo); }
+h2 { font-size: var(--t-titulo); margin: 0 0 var(--esp-4); }
+h3 { font-size: 17px; margin: var(--esp-5) 0 var(--esp-3); }
+a { color: var(--primario); }
+small, .suave { color: var(--texto-suave); font-size: var(--t-chico); }
+
+/* 3. ESTRUCTURA (plantilla principal) -------------------------------- */
+.barra { display: flex; align-items: center; gap: var(--esp-4); padding: 12px 20px; background: var(--primario); color: #fff; }
+.barra .marca { font-weight: 700; margin-right: auto; }
+.barra form { margin: 0; }
+.barra .btn-enlace { color: #fff; }
+.cuerpo { display: flex; min-height: calc(100vh - 48px); }
+.menu { width: 220px; flex-shrink: 0; background: var(--superficie); border-right: 1px solid var(--borde); padding: var(--esp-3) 0; }
+.menu .grupo { padding: var(--esp-3) 20px var(--esp-1); font-size: 12px; font-weight: 700; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .04em; }
+.menu a { display: block; padding: 9px 20px; color: var(--texto); text-decoration: none; }
+.menu a.activo, .menu a:hover { background: var(--primario-claro); color: var(--primario-osc); font-weight: 600; box-shadow: inset 3px 0 0 var(--primario); }
+.contenido { flex: 1; padding: var(--esp-5); max-width: 1180px; }
+
+/* 4. ENCABEZADO DE PÁGINA Y FILTROS ----------------------------------- */
+.encabezado { display: flex; justify-content: space-between; align-items: center; gap: var(--esp-3); margin-bottom: var(--esp-4); }
+.encabezado h2 { margin: 0; }
+.filtros { display: flex; flex-wrap: wrap; gap: var(--esp-3); align-items: flex-end; background: var(--superficie);
+           border: 1px solid var(--borde); border-radius: var(--radio); padding: var(--esp-3); margin-bottom: var(--esp-4); }
+.filtros label { display: grid; gap: var(--esp-1); font-size: var(--t-chico); font-weight: 600; }
+.filtros input, .filtros select { padding: 7px 9px; border: 1px solid var(--borde); border-radius: var(--radio); font: inherit; }
+
+/* 5. TABLAS ---------------------------------------------------------- */
+.tabla { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden; }
+.tabla th, .tabla td { padding: 9px 12px; border-bottom: 1px solid var(--borde); text-align: left; vertical-align: middle; }
+.tabla th { background: var(--superficie-2); font-size: 14px; color: var(--primario-osc); }
+.tabla tbody tr:last-child td { border-bottom: 0; }
+.tabla tbody tr:hover td { background: var(--fondo); }
+.tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tabla tr.inactivo td { color: var(--texto-suave); opacity: .75; }
+.tabla .vacio { text-align: center; color: var(--texto-suave); padding: var(--esp-6); }
+.acciones { display: flex; gap: var(--esp-3); align-items: center; }
+.acciones form { margin: 0; }
+.tabla td.acciones { display: table-cell; white-space: nowrap; }
+.tabla td.acciones > * + * { margin-left: var(--esp-3); }
+.tabla td.acciones form { display: inline; }
+
+/* 6. FORMULARIOS ----------------------------------------------------- */
+.formulario { display: grid; gap: 14px; max-width: 560px; }
+.formulario.ancho { max-width: 860px; }
+.formulario label { display: grid; gap: 5px; font-weight: 600; font-size: 14px; }
+.formulario input, .formulario select, .formulario textarea { padding: 9px 10px; border: 1px solid var(--borde); border-radius: var(--radio); font: inherit; font-weight: 400; background: #fff; }
+.formulario input:focus, .formulario select:focus, .formulario textarea:focus, .filtros input:focus, .filtros select:focus { outline: 2px solid var(--primario); outline-offset: 0; border-color: var(--primario); }
+.formulario .invalido { border-color: var(--error-t); }
+.bloque { border: 1px solid var(--borde); border-radius: var(--radio); padding: var(--esp-4); margin: 0; display: grid; gap: 14px; background: var(--superficie); }
+.bloque legend { font-weight: 700; padding: 0 var(--esp-2); color: var(--primario-osc); }
+.fila { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.fila-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.error-campo { color: var(--error-t); font-weight: 400; font-size: var(--t-chico); }
+.obligatorio::after { content: " *"; color: var(--error-t); }
+.botones { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* 7. BOTONES --------------------------------------------------------- */
+.btn { display: inline-block; background: var(--primario); color: #fff; border: 1px solid var(--primario); border-radius: var(--radio);
+       padding: 9px 16px; cursor: pointer; text-decoration: none; font: inherit; line-height: 1.2; }
+.btn:hover { background: var(--primario-osc); }
+.btn.secundario { background: #fff; color: var(--texto); border-color: var(--borde); }
+.btn.secundario:hover { background: var(--superficie-2); }
+.btn.peligro { background: var(--error-t); border-color: var(--error-t); }
+.btn.pequeno { padding: 5px 10px; font-size: var(--t-chico); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-enlace { background: none; border: 0; color: var(--primario); cursor: pointer; padding: 0; font: inherit; text-decoration: underline; }
+.btn-enlace.peligro { color: var(--error-t); }
+
+/* 8. MENSAJES -------------------------------------------------------- */
+.alerta { padding: 10px 14px; border-radius: var(--radio); margin-bottom: var(--esp-4); border-left: 4px solid currentColor; }
+.alerta.exito { background: var(--exito); color: var(--exito-t); }
+.alerta.error { background: var(--error); color: var(--error-t); }
+.alerta.aviso { background: var(--aviso); color: var(--aviso-t); }
+.alerta.info  { background: var(--info);  color: var(--info-t); }
+
+/* 9. INSIGNIAS DE ESTADO (usar la función insignia($estado)) ---------- */
+.insignia { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+.insignia.programada   { background: var(--programada);   color: var(--programada-t); }
+.insignia.confirmada   { background: var(--confirmada);   color: var(--confirmada-t); }
+.insignia.atendida, .insignia.activo, .insignia.activa, .insignia.habilitada, .insignia.pagado, .insignia.resultado_disponible { background: var(--atendida); color: var(--atendida-t); }
+.insignia.cancelada, .insignia.cancelado, .insignia.inactivo, .insignia.inactiva, .insignia.anulado, .insignia.cerrada { background: var(--cancelada); color: var(--cancelada-t); }
+.insignia.inasistencia { background: var(--inasistencia); color: var(--inasistencia-t); }
+.insignia.pendiente, .insignia.solicitado { background: var(--aviso); color: var(--aviso-t); }
+.insignia.suspendida { background: var(--error); color: var(--error-t); }
+
+/* 10. TARJETAS, RESUMEN E INDICADORES -------------------------------- */
+.tarjeta { background: var(--superficie); padding: var(--esp-6); border-radius: var(--radio-g); border: 1px solid var(--borde); box-shadow: var(--sombra); }
+.tarjeta .marca { color: var(--primario); font-size: 22px; margin-top: 0; }
+.indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--esp-4); margin-bottom: var(--esp-5); }
+.indicador { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio-g); padding: var(--esp-4); }
+.indicador .valor { font-size: 28px; font-weight: 700; color: var(--primario-osc); }
+.indicador .rotulo { color: var(--texto-suave); font-size: var(--t-chico); }
+.resumen { display: grid; grid-template-columns: max-content 1fr; gap: var(--esp-2) var(--esp-5); margin: 0 0 var(--esp-4); }
+.resumen dt { color: var(--texto-suave); }
+.resumen dd { margin: 0; font-weight: 600; }
+
+/* 11. PESTAÑAS, PASOS Y CUPOS (historial, agendar cita) --------------- */
+.pestanas { display: flex; gap: var(--esp-1); border-bottom: 1px solid var(--borde); margin-bottom: var(--esp-4); }
+.pestanas a { padding: 9px 16px; text-decoration: none; color: var(--texto-suave); border-bottom: 3px solid transparent; }
+.pestanas a.activa { color: var(--primario-osc); border-bottom-color: var(--primario); font-weight: 600; }
+.pasos { display: flex; gap: var(--esp-2); list-style: none; padding: 0; margin: 0 0 var(--esp-5); counter-reset: paso; }
+.pasos li { flex: 1; padding: var(--esp-2) var(--esp-3); border-radius: var(--radio); background: var(--superficie-2); color: var(--texto-suave); font-size: var(--t-chico); counter-increment: paso; }
+.pasos li::before { content: counter(paso) ". "; font-weight: 700; }
+.pasos li.actual { background: var(--primario); color: #fff; }
+.pasos li.hecho { background: var(--primario-claro); color: var(--primario-osc); }
+.cupos { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: var(--esp-2); }
+.cupo { padding: var(--esp-2); text-align: center; border: 1px solid var(--primario); border-radius: var(--radio); background: #fff; color: var(--primario-osc); cursor: pointer; font: inherit; }
+.cupo:hover, .cupo.elegido { background: var(--primario); color: #fff; }
+.cupo:disabled { border-color: var(--borde); color: var(--texto-suave); background: var(--superficie-2); cursor: not-allowed; }
+
+/* 12. PÁGINAS PÚBLICAS Y ADAPTACIÓN A CELULAR Y TABLET (responsive) -- */
+body.publica { display: grid; place-items: center; min-height: 100vh; padding: var(--esp-4); }
+body.publica .tarjeta { width: min(420px, 100%); }
+.btn-menu { display: none; background: none; border: 0; padding: 6px; cursor: pointer; flex-direction: column; gap: 4px; }
+.btn-menu span { display: block; width: 22px; height: 2px; background: #fff; border-radius: 2px; transition: transform .2s, opacity .2s; }
+.barra .usuario { font-size: var(--t-chico); opacity: .95; }
+.enlace-barra { text-decoration: none; }
+.menu .enlace-celular { display: none; }
+.tabla-contenedor { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.paginacion { display: flex; align-items: center; justify-content: center; gap: var(--esp-3); margin-top: var(--esp-4); }
+.centrado { text-align: center; margin: 0; }
+.ancho-total { width: 100%; }
+.sin-salto { white-space: nowrap; }
+.enlace-largo { word-break: break-all; font-weight: 600; }
+.insignia.neutra { background: var(--superficie-2); color: var(--texto); font-weight: 600; }
+
+/* Tablet: menú más angosto */
+@media (max-width: 1024px) {
+  .menu { width: 190px; }
+  .contenido { padding: var(--esp-4); }
+  .fila-3 { grid-template-columns: 1fr 1fr; }
+}
+
+/* Celular: menú desplegable con el botón ☰, una columna y tablas con desplazamiento horizontal */
+@media (max-width: 760px) {
+  .barra { flex-wrap: wrap; gap: var(--esp-2) var(--esp-3); padding: 10px 14px; }
+  .btn-menu { display: flex; }
+  .barra .usuario { order: 3; width: 100%; }
+  .enlace-barra { display: none; }
+  .cuerpo { flex-direction: column; min-height: 0; }
+  .menu { display: none; width: auto; border-right: 0; border-bottom: 1px solid var(--borde); padding: var(--esp-2) 0; }
+  body.menu-abierto .menu { display: block; }
+  body.menu-abierto .menu .enlace-celular { display: block; }
+  body.menu-abierto .btn-menu span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  body.menu-abierto .btn-menu span:nth-child(2) { opacity: 0; }
+  body.menu-abierto .btn-menu span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  .menu .grupo { padding-top: var(--esp-2); }
+  .contenido { padding: var(--esp-3); max-width: 100%; }
+  .fila, .fila-3 { grid-template-columns: 1fr; }
+  .encabezado { flex-direction: column; align-items: stretch; }
+  .encabezado .btn { text-align: center; }
+  .filtros { flex-direction: column; align-items: stretch; }
+  .filtros label, .filtros input, .filtros select, .filtros .btn { width: 100%; }
+  .formulario, .formulario.ancho { max-width: 100%; }
+  .botones { flex-direction: column-reverse; }
+  .botones .btn { width: 100%; text-align: center; }
+  .tabla { display: block; overflow-x: auto; white-space: nowrap; }
+  .tabla td, .tabla th { padding: 8px 10px; }
+  .pasos { flex-wrap: wrap; }
+  .pasos li { flex: 1 1 45%; }
+  .resumen { grid-template-columns: 1fr; gap: 2px; }
+  .resumen dd { margin-bottom: var(--esp-2); }
+  .tarjeta { padding: var(--esp-5); }
+  .indicadores { grid-template-columns: 1fr 1fr; }
+  h2 { font-size: 19px; }
+}
+
+/* Celular pequeño */
+@media (max-width: 420px) {
+  .indicadores { grid-template-columns: 1fr; }
+  .cupos { grid-template-columns: repeat(3, 1fr); }
+  .pasos li { flex-basis: 100%; }
+}
+
+/* 13. AJUSTES DE ENLACES-CUPO Y CAMPOS DENTRO DE TABLAS (CU11, CU13, CU14) */
+a.cupo { display: block; text-decoration: none; }
+.tabla input, .tabla select { padding: 6px 8px; border: 1px solid var(--borde); border-radius: var(--radio); font: inherit; background: #fff; }
+.tabla input[type="number"] { width: 90px; }
