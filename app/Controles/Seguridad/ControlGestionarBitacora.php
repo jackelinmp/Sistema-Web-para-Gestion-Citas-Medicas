@@ -19,6 +19,7 @@ final class ControlGestionarBitacora extends ControlBase
             'hasta'   => $this->fechaValida($_GET['hasta'] ?? ''),
             'usuario' => trim((string) ($_GET['usuario'] ?? '')),
             'accion'  => trim((string) ($_GET['accion'] ?? '')),
+            'ip'      => preg_match('/^[0-9a-fA-F:.]{0,45}$/', (string) ($_GET['ip'] ?? '')) ? trim((string) ($_GET['ip'] ?? '')) : '',
         ];
         $pagina = max(1, (int) ($_GET['pagina'] ?? 1));
         $bitacora = new Bitacora();

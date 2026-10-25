@@ -15,7 +15,7 @@ final class Bitacora extends EntidadBase
     }
 
     /**
-     * Consulta de la bitácora (solo lectura): filtros por fechas, usuario (correo o nombre) y acción.
+     * Consulta de la bitácora (solo lectura): filtros por fechas, usuario (correo o nombre), tipo de acción e IP.
      * Devuelve ['filas' => [...], 'total' => n] con paginación de $porPagina registros.
      */
     public function listar(array $f, int $pagina = 1, int $porPagina = 50): array
@@ -23,12 +23,14 @@ final class Bitacora extends EntidadBase
         $where = "WHERE (CAST(:desde AS date) IS NULL OR b.fecha_hora >= CAST(:desde2 AS date))
                     AND (CAST(:hasta AS date) IS NULL OR b.fecha_hora < CAST(:hasta2 AS date) + 1)
                     AND (CAST(:usuario AS text) = '' OR u.correo ILIKE :u1 OR (p.nombres || ' ' || p.apellidos) ILIKE :u2)
-                    AND (CAST(:accion AS text) = '' OR b.accion = :accion2)";
+                    AND (CAST(:accion AS text) = '' OR b.accion = :accion2)
+                    AND (CAST(:ip AS text) = '' OR host(b.ip) LIKE :ip2)";
         $desde = $f['desde'] ?: null;
         $hasta = $f['hasta'] ?: null;
         $like = '%' . $f['usuario'] . '%';
         $params = ['desde' => $desde, 'desde2' => $desde, 'hasta' => $hasta, 'hasta2' => $hasta,
-                   'usuario' => $f['usuario'], 'u1' => $like, 'u2' => $like, 'accion' => $f['accion'], 'accion2' => $f['accion']];
+                   'usuario' => $f['usuario'], 'u1' => $like, 'u2' => $like, 'accion' => $f['accion'], 'accion2' => $f['accion'],
+                   'ip' => $f['ip'], 'ip2' => $f['ip'] . '%'];
         $desdeJoin = 'FROM bitacora b
                       LEFT JOIN usuario u ON u.id = b.usuario_id
                       LEFT JOIN persona p ON p.id = u.persona_id ';

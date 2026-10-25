@@ -63,10 +63,22 @@ final class Sesion
     {
         self::exigirLogin();
         if (!self::puede($modulo, $accion)) {
-            http_response_code(403);
-            Vista::mostrar('plantillas/IUAccesoDenegado', [], 'principal');
-            exit;
+            self::denegar("Intento de acceso a $modulo/$accion (" . ($_GET['r'] ?? '') . ')');
         }
+    }
+
+    /** CU03: muestra «Acceso no autorizado» (403) y deja el intento en la bitácora. No vuelve. */
+    public static function denegar(string $detalle): never
+    {
+        try {
+            (new \App\Entidades\Bitacora())->registrarEvento((int) (self::usuario()['id'] ?? 0) ?: null,
+                'ACCESO_NO_AUTORIZADO', $detalle, Red::ip());
+        } catch (\Throwable $e) {
+            // la bitácora nunca debe impedir mostrar el rechazo
+        }
+        http_response_code(403);
+        Vista::mostrar('plantillas/IUAccesoDenegado', [], 'principal');
+        exit;
     }
 
     public static function flash(string $tipo, ?string $mensaje = null): ?string

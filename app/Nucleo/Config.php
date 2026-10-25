@@ -10,7 +10,7 @@ final class Config
     {
         if (!is_file($archivo)) {
             // En la nube no hay .env: los valores llegan como variables de entorno del servidor.
-            if (getenv('DB_HOST') !== false) {
+            if (getenv('DB_HOST') !== false || isset($_SERVER['DB_HOST']) || isset($_ENV['DB_HOST'])) {
                 return;
             }
             throw new \RuntimeException('Falta el archivo .env (copie .env.example y complételo).');
@@ -27,6 +27,10 @@ final class Config
 
     public static function obtener(string $clave, ?string $porDefecto = null): ?string
     {
-        return self::$valores[$clave] ?? getenv($clave) ?: $porDefecto;
+        $v = self::$valores[$clave] ?? getenv($clave);
+        if ($v === false || $v === null || $v === '') {
+            $v = $_SERVER[$clave] ?? $_ENV[$clave] ?? null;
+        }
+        return ($v === false || $v === null || $v === '') ? $porDefecto : (string) $v;
     }
 }

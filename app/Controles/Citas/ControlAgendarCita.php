@@ -131,6 +131,10 @@ final class ControlAgendarCita extends ControlBase
         if (!$cita) {
             $this->redirigir('citas/nueva');
         }
+        $u = Sesion::usuario();
+        if ($u['rol'] === 'PACIENTE' && (int) $cita['paciente_id'] !== (int) $u['persona_id']) {
+            Sesion::denegar('Intento de ver la cita ' . (int) $cita['id'] . ' de otro paciente');
+        }
         $this->vista('Citas/IUConstanciaCita', ['cita' => $cita]);
     }
 

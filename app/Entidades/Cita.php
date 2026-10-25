@@ -39,7 +39,7 @@ final class Cita extends EntidadBase
     /** CU14: datos de la constancia de la cita. */
     public function obtenerDetalle(int $id): ?array
     {
-        $st = $this->bd->prepare("SELECT c.id, c.codigo, c.fecha, c.hora_inicio, c.hora_fin, c.estado, c.motivo_consulta,
+        $st = $this->bd->prepare("SELECT c.id, c.codigo, c.fecha, c.hora_inicio, c.hora_fin, c.estado, c.motivo_consulta, c.paciente_id,
                                          pp.nombres || ' ' || pp.apellidos AS paciente, pa.nro_expediente,
                                          pm.nombres || ' ' || pm.apellidos AS medico, e.nombre AS especialidad,
                                          e.costo_consulta

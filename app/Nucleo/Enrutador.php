@@ -3,7 +3,7 @@ namespace App\Nucleo;
 
 /**
  * Traduce ?r=modulo/accion a una operación de un Control.
- * Las rutas están en app/rutas.php: 'ruta' => [Control::class, 'operacion', 'GET'|'POST'].
+ * Las rutas están en app/rutas.php: 'ruta' => [Control::class, 'operacion', 'GET'|'POST'[, 'sin_csrf']].
  */
 final class Enrutador
 {
@@ -20,11 +20,12 @@ final class Enrutador
             return;
         }
         [$control, $operacion, $verbo] = $destino;
+        $sinCsrf = ($destino[3] ?? '') === 'sin_csrf';   // solo el webhook de Stripe: no trae token, se valida por firma
         if ($verbo !== $metodo) {
             http_response_code(405);
             exit('Método no permitido.');
         }
-        if ($metodo === 'POST') {
+        if ($metodo === 'POST' && !$sinCsrf) {
             Sesion::verificarCsrf();
         }
         (new $control())->$operacion();

@@ -1,6 +1,6 @@
 <?php
 /**
- * «boundary» IUConstanciaCita — CU14 paso 10: constancia de la cita registrada.   Responsable: Jackeline
+ * «boundary» IUConstanciaCita — CU14 paso 10: constancia de la cita registrada, con «Pagar ahora» (CU19).   Responsable: Jackeline
  * @var array $cita
  */
 ?>
@@ -18,5 +18,11 @@
     <dt>Motivo</dt><dd><?= e($cita['motivo_consulta'] ?: '—') ?></dd>
     <dt>Costo</dt><dd><?= bs($cita['costo_consulta']) ?> (pago pendiente)</dd>
   </dl>
-  <div class="botones"><a class="btn secundario" href="?r=pacientes">Volver a pacientes</a><a class="btn" href="?r=citas/nueva">Nueva cita</a></div>
+  <div class="botones">
+    <?php if (\App\Nucleo\Sesion::puede('PACIENTES', 'C')): ?><a class="btn secundario" href="?r=pacientes">Volver a pacientes</a><?php endif; ?>
+    <a class="btn secundario" href="?r=citas/nueva">Nueva cita</a>
+    <?php if (\App\Nucleo\Sesion::puede('PAGOS', 'C') && $cita['estado'] === 'PROGRAMADA'): ?>
+      <a class="btn" href="?r=pagos/detalle&amp;cita_id=<?= (int) $cita['id'] ?>"><?= icono('tarjeta', 16) ?> Pagar ahora</a>
+    <?php endif; ?>
+  </div>
 </div>

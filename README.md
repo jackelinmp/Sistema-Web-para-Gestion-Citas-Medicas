@@ -1,58 +1,18 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Clínica Vida Salud — Sistema web de gestión de citas médicas
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+PHP 8 (MVC propio: interfaz → control → entidad) + PostgreSQL (Supabase) + Vercel.
 
-## About Laravel
+## Ciclo 1 (disponible) y Ciclo 2 (bloqueado)
+Ver `docs/ciclos_y_casos_de_uso.md`: los 12 casos de uso del Ciclo 1 (CU01 a CU06, CU08, CU09, CU11, CU13, CU14 y CU19) con su pantalla, control, interfaces, entidades y permisos.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Poner en marcha
+1. Cree la base: ejecute `base_datos/base_datos_completa.sql` en el SQL Editor de Supabase (o `psql`). Ver `base_datos/LEEME.md`.
+2. Copie `.env.example` como `.env` y complete los datos de conexión.
+3. Servidor local, desde esta carpeta: `php -S localhost:8000 -t public public/principal.php`
+4. Entre con `admin@clinicavidasalud.com` / `Admin123*` (pide cambiar la contraseña al primer ingreso).
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Vercel
+Cargue las variables `DB_*`, `APP_DEBUG`, `SESSION_DRIVER=cookie`, `APP_KEY` y, para el pago en línea, `STRIPE_SECRET_KEY` y `STRIPE_WEBHOOK_SECRET` en **Settings → Environment Variables** y despliegue desde GitHub. `api/index.php` es la entrada (`vercel.json`).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
-```
-
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Estructura
+`app/Interfaces` (IU) · `app/Controles` (control) · `app/Entidades` (entity) · `app/Nucleo` (enrutador, sesión, RBAC, ciclos) · `config/ciclos.php` (mapa de ciclos y CU) · `public/` (css, js, principal.php) · `base_datos/` (SQL).

@@ -5,7 +5,9 @@ use App\Entidades\Bitacora;
 use App\Entidades\ParametroSistema;
 use App\Entidades\TokenRecuperacion;
 use App\Entidades\Usuario;
+use App\Nucleo\Ciclos;
 use App\Nucleo\Config;
+use App\Nucleo\Conexion;
 use App\Nucleo\ControlBase;
 use App\Nucleo\Sesion;
 use App\Servicios\ServicioCorreo;
@@ -72,7 +74,7 @@ final class ControlIniciarSesion extends ControlBase
 
         // 3) Cuenta suspendida por el administrador
         if ($cuenta['estado'] !== 'HABILITADA') {
-            Sesion::flash('error', 'Cuenta suspendida. Contacte al administrador.');
+            Sesion::flash('error', 'Cuenta suspendida. Contacte al administrador');
             $this->vista('Seguridad/IUIniciarSesion', ['correo' => $correo], 'publica');
             return;
         }
@@ -90,13 +92,12 @@ final class ControlIniciarSesion extends ControlBase
         $this->redirigir('panel');
     }
 
-    /** Muestra en la pantalla de inicio de sesión el aviso de cuenta bloqueada (RF: bloqueo visible). */
+    /** CU01: aviso de cuenta bloqueada con los minutos restantes; el botón «Ingresar» queda deshabilitado. */
     private function mostrarBloqueo(string $correo, int $minutos): void
     {
-        Sesion::flash('aviso', 'Su cuenta está bloqueada temporalmente por varios intentos fallidos. '
-            . 'Podrá intentar de nuevo en ' . $minutos . ($minutos === 1 ? ' minuto' : ' minutos')
-            . ', o recuperar su contraseña con el enlace de abajo.');
-        $this->vista('Seguridad/IUIniciarSesion', ['correo' => $correo], 'publica');
+        Sesion::flash('aviso', 'Cuenta bloqueada temporalmente por intentos fallidos. Intente nuevamente en '
+            . $minutos . ($minutos === 1 ? ' minuto' : ' minutos') . ' o recupere su contraseña.');
+        $this->vista('Seguridad/IUIniciarSesion', ['correo' => $correo, 'bloqueado' => true], 'publica');
     }
 
     public function cerrarSesion(): void
@@ -110,10 +111,37 @@ final class ControlIniciarSesion extends ControlBase
         $this->redirigir('sesion/formulario');
     }
 
+    /** Inicio: módulos por ciclo (?ciclo=1|2|todos). Lo que el rol no puede usar se muestra bloqueado. */
     public function mostrarPanel(): void
     {
         Sesion::exigirLogin();
-        $this->vista('Seguridad/IUPanel');
+        $ciclos = Ciclos::evaluar();
+        $pedido = (string) ($_GET['ciclo'] ?? '1');
+        $seleccion = ($pedido === 'todos' || isset($ciclos[(int) $pedido])) ? $pedido : '1';
+        $this->vista('Seguridad/IUPanel', [
+            'ciclos' => $ciclos, 'seleccion' => $seleccion, 'indicadores' => $this->indicadores(),
+        ]);
+    }
+
+    /** Cifras del día solo de lo que el rol puede consultar (RBAC). */
+    private function indicadores(): array
+    {
+        $bd = Conexion::obtener();
+        $cifras = [];
+        if (Sesion::puede('PACIENTES', 'C')) {
+            $cifras['Pacientes activos'] = $bd->query("SELECT count(*) FROM paciente WHERE estado = 'ACTIVO'")->fetchColumn();
+        }
+        if (Sesion::puede('CITAS', 'C')) {
+            $cifras['Citas de hoy'] = $bd->query("SELECT count(*) FROM cita WHERE fecha = CURRENT_DATE AND estado <> 'CANCELADA'")->fetchColumn();
+            $cifras['Citas próximas (7 días)'] = $bd->query("SELECT count(*) FROM cita WHERE fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 7 AND estado IN ('PROGRAMADA','CONFIRMADA')")->fetchColumn();
+        }
+        if (Sesion::puede('ESPECIALIDADES_MEDICOS', 'C')) {
+            $cifras['Médicos activos'] = $bd->query("SELECT count(*) FROM medico WHERE estado = 'ACTIVO'")->fetchColumn();
+        }
+        if (Sesion::puede('SEGURIDAD', 'C')) {
+            $cifras['Cuentas habilitadas'] = $bd->query("SELECT count(*) FROM usuario WHERE estado = 'HABILITADA'")->fetchColumn();
+        }
+        return $cifras;
     }
 
     // ------------------------------------------------- recuperar contraseña por correo
@@ -234,13 +262,6 @@ final class ControlIniciarSesion extends ControlBase
     /** Dirección base del sistema para el enlace del correo (APP_URL o la del navegador). */
     private function urlBase(): string
     {
-        if ($url = Config::obtener('APP_URL')) {
-            return rtrim($url, '/') . '/';
-        }
-        $ruta = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-        if (str_ends_with($ruta, '.php')) {
-            $ruta = dirname($ruta);
-        }
-        return (Sesion::esHttps() ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . rtrim($ruta, '/') . '/';
+        return \App\Nucleo\Red::urlBase();
     }
 }

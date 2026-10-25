@@ -17,19 +17,24 @@
   </style>
 </head>
 <body>
-<header class="barra"><span class="marca">Clínica Vida Salud · Guía de estilos</span><span>Usuario Demo · RECEPCIONISTA</span></header>
-<div class="cuerpo">
-  <nav class="menu">
-    <a href="#colores" class="activo">Colores</a>
-    <div class="grupo">Componentes</div>
-    <a href="#pagina-lista">Página de lista</a>
-    <a href="#formulario">Formulario</a>
-    <a href="#botones">Botones y mensajes</a>
-    <a href="#estados">Estados</a>
-    <a href="#detalle">Detalle y pestañas</a>
-    <a href="#agendar">Agendar (pasos y cupos)</a>
-    <a href="#panel">Panel de indicadores</a>
-  </nav>
+<div class="app">
+  <aside class="menu">
+    <div class="menu-marca"><span class="logo">&#9829;</span><span><strong>Vida Salud</strong><small>Guía de estilos</small></span></div>
+    <nav class="menu-nav">
+      <a href="#colores" class="nav activo"><span>Colores</span></a>
+      <div class="nav-grupo">Componentes</div>
+      <a class="nav" href="#pagina-lista"><span>Página de lista</span></a>
+      <a class="nav" href="#formulario"><span>Formulario</span></a>
+      <a class="nav" href="#botones"><span>Botones y mensajes</span></a>
+      <a class="nav" href="#estados"><span>Estados</span></a>
+      <a class="nav" href="#detalle"><span>Detalle y pestañas</span></a>
+      <a class="nav" href="#agendar"><span>Agendar (pasos y cupos)</span></a>
+      <a class="nav" href="#panel"><span>Panel de indicadores</span></a>
+      <a class="nav" href="#modulos"><span>Módulos por ciclo</span></a>
+    </nav>
+  </aside>
+  <div class="principal">
+  <header class="barra"><strong>Clínica Vida Salud · Guía de estilos</strong><span class="rol-chip">RECEPCIONISTA</span></header>
   <main class="contenido">
     <h2>Guía de estilos del equipo</h2>
     <p class="suave">Cada pantalla se arma SOLO con estas piezas. Copia el código de la muestra y cambia los textos y campos. Nada de <code>style="..."</code> en los IU*.php.</p>
@@ -184,7 +189,17 @@ Formatos:  fecha($c['fecha']) -&gt; 15/11/2026 · hora($c['hora_inicio']) -&gt; 
         <div class="indicador"><div class="valor">Bs 4.200,00</div><div class="rotulo">Ingresos del mes</div></div>
       </div>
     </section>
+    <section class="muestra" id="modulos">
+      <h3>9. Módulos por ciclo (IUPanel): tarjeta disponible, bloqueada por rol y del Ciclo 2</h3>
+      <nav class="pestanas-ciclo"><a class="activa" href="#modulos">Ciclo 1 <small>7/9 módulos</small></a><a class="cerrado" href="#modulos">Ciclo 2</a><a href="#modulos">Todos</a></nav>
+      <div class="modulos">
+        <article class="modulo"><div class="modulo-cabecera"><span class="modulo-icono">&#9733;</span><span class="etiqueta-cu">CU05</span></div><h5>Pacientes</h5><p>Registro, búsqueda y estado de pacientes.</p><a class="btn" href="#modulos">Ingresar</a></article>
+        <article class="modulo bloqueado"><div class="modulo-cabecera"><span class="modulo-icono">&#9733;</span><span class="etiqueta-cu">CU02</span></div><h5>Usuarios</h5><p>Cuentas internas y roles.</p><span class="btn-bloqueado">Tu rol no tiene acceso a este módulo</span></article>
+        <article class="modulo bloqueado"><div class="modulo-cabecera"><span class="modulo-icono">&#9733;</span><span class="etiqueta-cu">Ciclo 2</span></div><h5>Pagos</h5><p>Cobro de consultas.</p><span class="btn-bloqueado">Disponible en el Ciclo 2</span></article>
+      </div>
+    </section>
   </main>
+  </div>
 </div>
 </body>
 </html>
