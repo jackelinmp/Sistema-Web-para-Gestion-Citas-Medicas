@@ -17,21 +17,57 @@ conecta **directamente a PostgreSQL**; no usa las claves `anon` ni `service_role
 
 ## 2. Copiar los seis datos
 
-1. Dentro del proyecto, presione **Connect** (arriba).
-2. Elija la pestaña **Session pooler**. No use *Transaction pooler* ni *Direct connection*.
-3. Copie estos valores:
+### 2.1 Abrir el proyecto
 
-| Variable | Dónde aparece | Ejemplo |
+1. Entre a <https://supabase.com/dashboard> e inicie sesión.
+2. En la lista de proyectos, haga clic en el de la clínica.
+3. Si no aparece ningún proyecto, cree uno (**New project**) y guarde la contraseña que le pida.
+
+### 2.2 Abrir el cuadro de conexión
+
+1. Ya dentro del proyecto, mire la barra superior. Presione el botón **Connect**.
+   También puede abrir directamente:
+   `https://supabase.com/dashboard/project/_?showConnect=true&method=session`
+   (si tiene varios proyectos, primero seleccione el de la clínica).
+2. En la ventana que aparece, elija **Session pooler**.
+   No elija *Transaction pooler* ni *Direct connection*.
+
+### 2.3 Leer la cadena de conexión
+
+Verá una línea parecida a esta:
+
+```
+postgresql://postgres.abcdefghijklmnop:MiClave123@aws-0-us-east-2.pooler.supabase.com:5432/postgres
+```
+
+Cada parte corresponde a una variable:
+
+```
+postgresql:// postgres.abcdefghijklmnop : MiClave123 @ aws-0-us-east-2.pooler.supabase.com : 5432 / postgres
+              └──────── DB_USER ────────┘  └ DB_PASS ─┘  └────────────── DB_HOST ──────────────┘  DB_PORT  DB_NAME
+```
+
+| Variable | Parte de la cadena | Ejemplo |
 |---|---|---|
-| `DB_HOST` | Host | `aws-0-us-east-2.pooler.supabase.com` |
-| `DB_PORT` | Port | `5432` |
-| `DB_NAME` | Database | `postgres` |
-| `DB_USER` | User | `postgres.abcdefghijklmnop` |
-| `DB_PASS` | La contraseña que eligió al crear el proyecto | `MiClaveSegura123` |
-| `DB_SSLMODE` | Se escribe a mano | `require` |
+| `DB_USER` | lo que está entre `//` y `:` | `postgres.abcdefghijklmnop` |
+| `DB_PASS` | lo que está entre `:` y `@` | `MiClave123` |
+| `DB_HOST` | lo que está entre `@` y `:5432` | `aws-0-us-east-2.pooler.supabase.com` |
+| `DB_PORT` | el número después del host | `5432` |
+| `DB_NAME` | lo que va después de la última `/` | `postgres` |
+| `DB_SSLMODE` | no aparece en la cadena | `require` |
 
-> Si perdió la contraseña: **Project Settings → Database → Reset database password**.
-> Esa es la contraseña de la base, no la de su cuenta de Supabase.
+Si la cadena muestra `[YOUR-PASSWORD]`, reemplácelo por la contraseña real de la base.
+
+### 2.4 Si no sabe la contraseña
+
+1. En el proyecto: **Project Settings** (engranaje) → **Database**.
+2. Busque la sección **Database password**.
+3. Presione **Reset database password**, escriba una nueva y guárdela.
+
+Esa es la contraseña de la **base de datos**, no la de su cuenta de Supabase.
+
+> No use la sección **API Keys** ni las claves `anon` / `service_role`: esta aplicación no las
+> necesita, se conecta directo a PostgreSQL.
 
 ## 3. Completar el `.env` local
 
