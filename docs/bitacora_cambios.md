@@ -7,7 +7,7 @@ documento hay que actualizar.
 ## Reglas
 
 1. Todo cambio de esquema va en `base_datos/migraciones/`, numerado y aditivo.
-2. Se aplica en la base **antes** de subir el código que lo usa.
+2. El equipo las aplica a mano en el SQL Editor de Supabase; la aplicación no las ejecuta.
 3. `base_datos_completa.sql` y `config/ciclos.php` tienen un solo dueño (Grupo 1).
 4. Cada fila indica la sección del documento que hay que corregir.
 5. Nada de `DROP`, `RENAME` ni cambios de tipo.
