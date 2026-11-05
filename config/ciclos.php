@@ -60,7 +60,7 @@ return [
     ],
 
     2 => [
-        'nombre' => 'Ciclo 2', 'abierto' => false,
+        'nombre' => 'Ciclo 2', 'abierto' => true,
         'titulo' => 'Gestión completa de la cita, reportes, historial, notificaciones y asistente virtual',
         'paquetes' => [
             ['id' => 'P2', 'titulo' => 'Pacientes', 'items' => [
@@ -77,11 +77,11 @@ return [
             ]],
             ['id' => 'P5', 'titulo' => 'Citas médicas', 'items' => [
                 ['cu' => 'CU15', 'texto' => 'Estados de cita', 'desc' => 'Programada, confirmada, atendida, cancelada.',
-                 'ruta' => null, 'rutas' => [], 'modulo' => 'CITAS', 'accion' => 'C', 'icono' => 'calendario-ok', 'listo' => false],
+                 'ruta' => 'citas/agenda', 'rutas' => ['citas/agenda'], 'modulo' => 'CITAS', 'accion' => 'M', 'icono' => 'calendario-ok', 'listo' => true],
                 ['cu' => 'CU16', 'texto' => 'Reprogramar o cancelar', 'desc' => 'Libera el cupo y propone nuevo horario.',
                  'ruta' => null, 'rutas' => [], 'modulo' => 'CITAS', 'accion' => 'C', 'icono' => 'calendario', 'listo' => false],
                 ['cu' => 'CU17', 'texto' => 'Registrar inasistencia', 'desc' => 'Alimenta los indicadores de ausentismo.',
-                 'ruta' => null, 'rutas' => [], 'modulo' => 'CITAS', 'accion' => 'C', 'icono' => 'calendario', 'listo' => false],
+                 'ruta' => 'citas/agenda', 'rutas' => [], 'modulo' => 'CITAS', 'accion' => 'M', 'icono' => 'calendario', 'listo' => true],
             ]],
             ['id' => 'P6', 'titulo' => 'Reportes', 'items' => [
                 ['cu' => 'CU18', 'texto' => 'Reportes operativos', 'desc' => 'Productividad por médico e ingresos diarios.',

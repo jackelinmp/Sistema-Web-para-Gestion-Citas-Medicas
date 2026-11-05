@@ -511,7 +511,7 @@ BEGIN
     IF v_actual IS NULL THEN
         RAISE EXCEPTION 'La cita % no existe', p_cita;
     END IF;
-    IF NOT (   (v_actual = 'PROGRAMADA' AND p_nuevo IN ('CONFIRMADA', 'CANCELADA'))
+    IF NOT (   (v_actual = 'PROGRAMADA' AND p_nuevo IN ('CONFIRMADA', 'CANCELADA', 'INASISTENCIA'))
             OR (v_actual = 'CONFIRMADA' AND p_nuevo IN ('ATENDIDA', 'CANCELADA', 'INASISTENCIA'))) THEN
         RAISE EXCEPTION 'No se puede pasar una cita de % a %', v_actual, p_nuevo;
     END IF;
@@ -666,7 +666,7 @@ INSERT INTO permiso (modulo, accion) VALUES
  ('PACIENTES','C'),('PACIENTES','R'),('PACIENTES','M'),
  ('ESPECIALIDADES_MEDICOS','C'),('ESPECIALIDADES_MEDICOS','R'),('ESPECIALIDADES_MEDICOS','M'),('ESPECIALIDADES_MEDICOS','A'),
  ('AGENDAS','C'),('AGENDAS','M'),
- ('CITAS','C'),('CITAS','R'),
+ ('CITAS','C'),('CITAS','R'),('CITAS','M'),
  ('SEGURIDAD','C'),('SEGURIDAD','R'),('SEGURIDAD','M'),('SEGURIDAD','A'),
  -- módulos del Ciclo 2 (el código del Ciclo 1 aún no los usa)
  ('EXAMENES','C'),('EXAMENES','R'),('EXAMENES','M'),('PAGOS','C'),('PAGOS','R'),('REPORTES','C'),('COMUNICACION','C'),('COMUNICACION','M');
@@ -675,12 +675,12 @@ INSERT INTO permiso (modulo, accion) VALUES
 INSERT INTO rol_permiso SELECT r.id, p.id FROM rol r CROSS JOIN permiso p WHERE r.nombre = 'ADMINISTRADOR';
 -- RECEPCIONISTA
 INSERT INTO rol_permiso SELECT r.id, p.id FROM rol r JOIN permiso p
-  ON (p.modulo, p.accion) IN (('PACIENTES','C'),('PACIENTES','R'),('PACIENTES','M'),('CITAS','C'),('CITAS','R'),
+  ON (p.modulo, p.accion) IN (('PACIENTES','C'),('PACIENTES','R'),('PACIENTES','M'),('CITAS','C'),('CITAS','R'),('CITAS','M'),
                               ('ESPECIALIDADES_MEDICOS','C'),('AGENDAS','C'),('PAGOS','C'),('PAGOS','R'),('EXAMENES','C'),('REPORTES','C'))
  WHERE r.nombre = 'RECEPCIONISTA';
 -- MEDICO
 INSERT INTO rol_permiso SELECT r.id, p.id FROM rol r JOIN permiso p
-  ON (p.modulo, p.accion) IN (('PACIENTES','C'),('CITAS','C'),('CITAS','R'),('ESPECIALIDADES_MEDICOS','C'),('AGENDAS','C'),('EXAMENES','C'),('EXAMENES','R'),('EXAMENES','M'))
+  ON (p.modulo, p.accion) IN (('PACIENTES','C'),('CITAS','C'),('CITAS','R'),('CITAS','M'),('ESPECIALIDADES_MEDICOS','C'),('AGENDAS','C'),('EXAMENES','C'),('EXAMENES','R'),('EXAMENES','M'))
  WHERE r.nombre = 'MEDICO';
 -- PACIENTE
 INSERT INTO rol_permiso SELECT r.id, p.id FROM rol r JOIN permiso p

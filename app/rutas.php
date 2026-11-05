@@ -8,6 +8,7 @@
  */
 use App\Controles\Agendas\ControlConfigurarJornada;
 use App\Controles\Citas\ControlAgendarCita;
+use App\Controles\Citas\ControlGestionarEstadosCita;
 use App\Controles\Citas\ControlVerificarDisponibilidad;
 use App\Controles\Especialidades\ControlGestionarEspecialidades;
 use App\Controles\Especialidades\ControlGestionarMedicos;
@@ -78,4 +79,11 @@ return [
     'pagos/webhook'              => [ControlProcesarPago::class, 'recibirNotificacion', 'POST', 'sin_csrf'],
     'pagos/seguro'               => [ControlProcesarPago::class, 'confirmarPorSeguro', 'POST'],
     'pagos/comprobante'          => [ControlProcesarPago::class, 'descargarComprobante', 'GET'],
+
+    // ===================== CICLO 2 — GRUPO 1 =====================
+    // CU15 Gestionar Estados de Cita (y CU17 Registrar Inasistencia, «extend»)
+    'citas/agenda'               => [ControlGestionarEstadosCita::class, 'listarAgenda', 'GET'],
+    'citas/estado/confirmar'     => [ControlGestionarEstadosCita::class, 'confirmarCita', 'POST'],
+    'citas/estado/atender'       => [ControlGestionarEstadosCita::class, 'marcarAtendida', 'POST'],
+    'citas/estado/inasistencia'  => [ControlGestionarEstadosCita::class, 'marcarInasistencia', 'POST'],
 ];

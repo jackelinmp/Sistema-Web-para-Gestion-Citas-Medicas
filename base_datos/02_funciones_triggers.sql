@@ -162,7 +162,7 @@ BEGIN
     IF v_actual IS NULL THEN
         RAISE EXCEPTION 'La cita % no existe', p_cita;
     END IF;
-    IF NOT (   (v_actual = 'PROGRAMADA' AND p_nuevo IN ('CONFIRMADA', 'CANCELADA'))
+    IF NOT (   (v_actual = 'PROGRAMADA' AND p_nuevo IN ('CONFIRMADA', 'CANCELADA', 'INASISTENCIA'))
             OR (v_actual = 'CONFIRMADA' AND p_nuevo IN ('ATENDIDA', 'CANCELADA', 'INASISTENCIA'))) THEN
         RAISE EXCEPTION 'No se puede pasar una cita de % a %', v_actual, p_nuevo;
     END IF;

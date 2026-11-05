@@ -54,6 +54,49 @@ final class Cita extends EntidadBase
     }
 
     /**
+     * CU15/CU17: agenda de una fecha, opcionalmente filtrada por estado y por médico.
+     * Reutiliza vw_citas_detalle para no repetir los JOIN de paciente y especialidad.
+     */
+    public function listarAgenda(string $fecha, ?string $estado, ?int $medicoId): array
+    {
+        $sql = "SELECT id, codigo, fecha, hora_inicio, hora_fin, estado, paciente, medico_id, medico,
+                       especialidad, motivo_consulta
+                  FROM vw_citas_detalle
+                 WHERE fecha = CAST(:fecha AS date)";
+        $parametros = ['fecha' => $fecha];
+        if ($estado !== null && $estado !== '') {
+            $sql .= ' AND estado = :estado';
+            $parametros['estado'] = $estado;
+        }
+        if ($medicoId !== null) {
+            $sql .= ' AND medico_id = :medico';
+            $parametros['medico'] = $medicoId;
+        }
+        $st = $this->bd->prepare($sql . ' ORDER BY hora_inicio');
+        $st->execute($parametros);
+        return $st->fetchAll();
+    }
+
+    /** CU15/CU16/CU17: datos mínimos de la cita que se va a modificar. */
+    public function obtenerParaGestion(int $id): ?array
+    {
+        $st = $this->bd->prepare('SELECT id, codigo, paciente_id, medico_id, fecha, hora_inicio, estado
+                                    FROM cita WHERE id = :id');
+        $st->execute(['id' => $id]);
+        return $st->fetch() ?: null;
+    }
+
+    /**
+     * CU15/CU17: cambia el estado con el procedimiento de la base.
+     * Él valida la transición permitida y registra el evento en la bitácora.
+     */
+    public function cambiarEstado(int $id, string $nuevoEstado, int $usuarioId): void
+    {
+        $st = $this->bd->prepare('SELECT sp_cambiar_estado_cita(:id, :estado, :usuario)');
+        $st->execute(['id' => $id, 'estado' => $nuevoEstado, 'usuario' => $usuarioId]);
+    }
+
+    /**
      * CU11 flujo alternativo: citas futuras activas del médico que quedan fuera de su jornada vigente.
      * Se llama dentro de la transacción, después de guardar la jornada nueva.
      */
