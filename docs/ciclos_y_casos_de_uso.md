@@ -21,11 +21,17 @@ La fuente única del mapa de ciclos es `config/ciclos.php` (menú, panel y etiqu
 | P5 Citas | CU14 Agendar cita (incluye CU06 y CU13; «Pagar ahora» extiende a CU19) | `citas/nueva`, `citas/constancia` | `ControlAgendarCita` | `IUAgendarCita`, `IUConstanciaCita` | Paciente, Especialidad, Medico, Cita, Pago, Bitacora | CITAS C/R |
 | P7 Pagos | CU19 Procesar pago en línea (Stripe, modo prueba) | `pagos`, `pagos/detalle`, `pagos/iniciar`, `pagos/retorno`, `pagos/cancelado`, `pagos/webhook`, `pagos/seguro`, `pagos/comprobante` | `ControlProcesarPago` (+ `ServicioStripe`, `PdfSimple`) | `IUPagos`, `IUDetallePago` | Pago, Cita, Bitacora | PAGOS C/R |
 
-## Ciclo 2 (bloqueado): 14 casos de uso
+## Ciclo 2 (en desarrollo): 14 casos de uso
 
 CU07, CU10, CU12, CU15, CU16, CU17, CU18, CU20, CU21, CU22, CU23, CU24, CU25 y CU26, agrupados en los paquetes P2 a P10.
 La base de datos ya tiene sus tablas, triggers y vistas (`base_datos/`); falta su código.
-Aparecen en el menú y en el panel **bloqueados** con el texto «Disponible en el Ciclo 2».
+
+| Paquete | CU | Pantalla (`?r=`) | Control | Interfaces (IU) | Entidades | Permiso (RBAC) |
+|---|---|---|---|---|---|---|
+| P5 Citas | CU15 Gestionar estados (extend CU17) | `citas/agenda`, `citas/estado/confirmar`, `citas/estado/atender` | `ControlGestionarEstadosCita` | `IUAgendaDia` | Cita, Medico, Bitacora | CITAS M |
+| P5 Citas | CU17 Registrar inasistencia (extend de CU15) | `citas/estado/inasistencia` | `ControlGestionarEstadosCita` | `IUAgendaDia` | Cita, Bitacora | CITAS M |
+
+Los demás aparecen en el menú y en el panel **bloqueados** con el texto «Disponible en el Ciclo 2».
 
 Para abrir un CU del ciclo 2: en `config/ciclos.php` pon su `ruta`, `'listo' => true` y, al empezar el ciclo, `'abierto' => true`. Sus rutas se agregan en `app/rutas.php`.
 
@@ -43,6 +49,7 @@ escribe la dirección a mano, el servidor responde «Acceso no autorizado» (403
 | CU08 Especialidades, CU09 Médicos | ✔ | consultar | consultar | 🔒 |
 | CU11 Jornadas | ✔ | consultar | consultar | 🔒 |
 | CU13 Disponibilidad, CU14 Agendar cita | ✔ | ✔ | ✔ | ✔ (solo para sí mismo) |
+| CU15 Estados de cita, CU17 Inasistencia | ✔ | ✔ | ✔ (solo su agenda) | 🔒 |
 | CU19 Pago en línea | ✔ | ✔ | 🔒 | ✔ (solo sus citas) |
 
 ## Flujo de CU19 (pago en línea)

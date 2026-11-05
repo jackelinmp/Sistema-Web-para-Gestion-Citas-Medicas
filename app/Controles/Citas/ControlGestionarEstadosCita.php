@@ -2,6 +2,7 @@
 namespace App\Controles\Citas;
 
 use App\Entidades\Cita;
+use App\Entidades\Medico;
 use App\Nucleo\ControlBase;
 use App\Nucleo\Sesion;
 
@@ -32,12 +33,18 @@ final class ControlGestionarEstadosCita extends ControlBase
         $usuario  = Sesion::usuario();
         $fecha    = (string) ($_GET['fecha'] ?? date('Y-m-d'));
         $estado   = (string) ($_GET['estado'] ?? '');
-        $medicoId = $usuario['rol'] === 'MEDICO' ? (int) $usuario['persona_id'] : null;
+        $esMedico = ($usuario['rol'] ?? '') === 'MEDICO';
+        // El médico solo ve su agenda; los demás pueden filtrar por cualquier médico.
+        $medicoId = $esMedico
+            ? (int) $usuario['persona_id']
+            : (((string) ($_GET['medico_id'] ?? '')) !== '' ? (int) $_GET['medico_id'] : null);
 
-        $this->vista('Citas/IUAgendaCitas', [
-            'citas'  => (new Cita())->listarAgenda($fecha, $estado, $medicoId),
-            'fecha'  => $fecha,
-            'estado' => $estado,
+        $this->vista('Citas/IUAgendaDia', [
+            'citas'    => (new Cita())->listarAgenda($fecha, $estado, $medicoId),
+            'medicos'  => $esMedico ? [] : (new Medico())->listarActivos(),
+            'medicoId' => $medicoId,
+            'fecha'    => $fecha,
+            'estado'   => $estado,
         ]);
     }
 
