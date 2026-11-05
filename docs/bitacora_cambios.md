@@ -20,6 +20,7 @@ documento hay que actualizar.
 | 2026-11-05 | CU15, CU16, CU17 | `base_datos/migraciones/01_ciclo2_estados_cita.sql`, `03_datos_base.sql` | Nuevo permiso `CITAS/M` para Administrador, Recepcionista y Médico | El ciclo 1 solo tenía `CITAS/C` y `CITAS/R`; sin `M` el menú de la agenda queda bloqueado | 4.1.1 matriz RBAC, 4.5.1 paquete de citas |
 | 2026-11-05 | Ciclo 2 | `config/ciclos.php` | `abierto => true` y CU15/CU17 con ruta y `listo => true` | El ciclo 2 ya empieza a mostrarse en el menú | 4.2 priorización, 4.5.1 paquetes |
 | 2026-11-05 | CU15, CU17 | `app/Controles/Citas/ControlGestionarEstadosCita.php`, `app/Interfaces/Citas/IUAgendaCitas.php`, `app/Entidades/Cita.php`, `app/rutas.php` | Agenda de citas con Confirmar, Marcar atendida y Registrar inasistencia | Implementación de CU15 y de la extensión CU17 | 5.2 comunicación, 5.3 clases, 6.2 secuencia, 7 implementación |
+| 2026-11-05 | Despliegue | `Dockerfile`, `.dockerignore`, `render.yaml`, `docs/despliegue_render.md`, `README.md` | Se reemplaza Vercel por Render con Docker; se eliminan `vercel.json`, `api/index.php` y `.vercel/` | Vercel falló con su runtime de PHP y el proyecto requiere el mismo entorno que en local | 3.5 herramientas, 7 implementación, anexos (URL y captura) |
 
 ## Cambios previstos
 

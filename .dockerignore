@@ -1,0 +1,7 @@
+# Archivos que no deben viajar dentro de la imagen.
+.git
+.env
+.env.*
+.vercel
+node_modules
+*.log
