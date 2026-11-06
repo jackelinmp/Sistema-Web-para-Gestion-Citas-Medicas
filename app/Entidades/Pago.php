@@ -67,4 +67,19 @@ final class Pago extends EntidadBase
     {
         $this->bd->prepare("SELECT sp_cambiar_estado_cita(:c, 'CONFIRMADA', :u)")->execute(['c' => $citaId, 'u' => $usuario]);
     }
+
+    /** CU18: ingresos por día y método, solo pagos PAGADO del período. */
+    public function reportarIngresos(string $desde, string $hasta): array
+    {
+        $st = $this->bd->prepare("SELECT to_char(p.fecha_pago, 'YYYY-MM-DD') AS dia, p.metodo,
+                                         count(*) AS pagos, COALESCE(sum(p.monto), 0) AS total
+                                    FROM pago p
+                                   WHERE p.estado = 'PAGADO'
+                                     AND p.fecha_pago IS NOT NULL
+                                     AND p.fecha_pago::date BETWEEN :d AND :h
+                                   GROUP BY to_char(p.fecha_pago, 'YYYY-MM-DD'), p.metodo
+                                   ORDER BY dia, metodo");
+        $st->execute(['d' => $desde, 'h' => $hasta]);
+        return $st->fetchAll();
+    }
 }
