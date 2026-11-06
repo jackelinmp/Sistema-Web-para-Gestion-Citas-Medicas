@@ -5,6 +5,7 @@ use App\Entidades\Bitacora;
 use App\Entidades\Notificacion;
 use App\Entidades\Persona;
 use App\Entidades\Usuario;
+use App\Nucleo\Conexion;
 use App\Nucleo\ControlBase;
 use App\Nucleo\Sesion;
 use App\Servicios\ServicioCorreo;
@@ -94,6 +95,24 @@ final class ControlGestionarNotificaciones extends ControlBase
             }
         }
         return $enviados;
+    }
+
+    /** Crea un aviso para el paciente de una cita (si tiene cuenta en el portal). */
+    public function notificarCita(int $citaId, string $tipo, string $asunto, string $mensaje): void
+    {
+        $bd = Conexion::obtener();
+        $st = $bd->prepare('SELECT u.id FROM usuario u JOIN cita c ON c.paciente_id = u.persona_id WHERE c.id = :c');
+        $st->execute(['c' => $citaId]);
+        $uid = $st->fetchColumn();
+        if ($uid) {
+            (new Notificacion())->registrar((int) $uid, $citaId, $tipo, $asunto, $mensaje);
+        }
+    }
+
+    /** Procesa los avisos pendientes de envío por correo. */
+    public function notificarEventos(): void
+    {
+        $this->enviarPendientes();
     }
 
     private function exigirRol(array $roles): void

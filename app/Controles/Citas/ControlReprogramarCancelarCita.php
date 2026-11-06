@@ -122,7 +122,12 @@ final class ControlReprogramarCancelarCita extends ControlBase
             Sesion::flash('error', $this->mensajeBaseDatos($e));
             $this->redirigir($volver);
         }
-        (new ControlGestionarNotificaciones())->notificarEventos();
+        (new ControlGestionarNotificaciones())->notificarCita(
+            (int) $cita['id'], 'REPROGRAMACION',
+            'Su cita fue reprogramada',
+            'Su cita ' . $cita['codigo'] . ' fue reprogramada para el ' . date('d/m/Y', strtotime($fecha))
+            . ' a las ' . substr($cupo['hora_inicio'], 0, 5) . '.'
+        );
         Sesion::flash('ok', 'Cita ' . $cita['codigo'] . ' reprogramada para el ' . date('d/m/Y', strtotime($fecha))
                             . ' a las ' . substr($cupo['hora_inicio'], 0, 5) . '. El horario anterior quedó libre.');
         $this->redirigir('citas/proximas');
@@ -149,7 +154,11 @@ final class ControlReprogramarCancelarCita extends ControlBase
             Sesion::flash('error', $this->mensajeBaseDatos($e));
             $this->redirigir($volver);
         }
-        (new ControlGestionarNotificaciones())->notificarEventos();
+        (new ControlGestionarNotificaciones())->notificarCita(
+            (int) $cita['id'], 'CANCELACION',
+            'Su cita fue cancelada',
+            'Su cita ' . $cita['codigo'] . ' fue cancelada. Motivo: ' . mb_substr($motivo, 0, 200) . '.'
+        );
         $detalle = (new Cita())->obtenerDetalle((int) $cita['id']);
         $aviso = ($detalle['pago_estado'] ?? '') === 'REEMBOLSADO'
             ? ' El pago de Bs ' . number_format((float) $detalle['monto'], 2, ',', '.') . ' queda para devolución en recepción.' : '';
