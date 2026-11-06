@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guía de estilos – Clínica Vida Salud</title>
+  <link rel="stylesheet" href="css/estilos.css">
+  <!-- Estilos SOLO de esta página de muestra (no copiar a las interfaces) -->
+  <style>
+    .muestra { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio-g); padding: var(--esp-5); margin-bottom: var(--esp-5); }
+    .muestra > h3 { margin-top: 0; }
+    pre { background: #3b2f2a; color: #f7efe8; padding: var(--esp-3); border-radius: var(--radio); overflow-x: auto; font-size: 12.5px; margin: var(--esp-4) 0 0; }
+    .colores { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--esp-3); }
+    .color { border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden; font-size: 12px; }
+    .color div { height: 44px; }
+    .color span { display: block; padding: 6px 8px; }
+  </style>
+</head>
+<body>
+<header class="barra"><span class="marca">Clínica Vida Salud · Guía de estilos</span><span>Usuario Demo · RECEPCIONISTA</span></header>
+<div class="cuerpo">
+  <nav class="menu">
+    <a href="#colores" class="activo">Colores</a>
+    <div class="grupo">Componentes</div>
+    <a href="#pagina-lista">Página de lista</a>
+    <a href="#formulario">Formulario</a>
+    <a href="#botones">Botones y mensajes</a>
+    <a href="#estados">Estados</a>
+    <a href="#detalle">Detalle y pestañas</a>
+    <a href="#agendar">Agendar (pasos y cupos)</a>
+    <a href="#panel">Panel de indicadores</a>
+  </nav>
+  <main class="contenido">
+    <h2>Guía de estilos del equipo</h2>
+    <p class="suave">Cada pantalla se arma SOLO con estas piezas. Copia el código de la muestra y cambia los textos y campos. Nada de <code>style="..."</code> en los IU*.php.</p>
+
+    <section class="muestra" id="colores">
+      <h3>1. Colores (usar siempre la variable)</h3>
+      <div class="colores">
+        <div class="color"><div style="background:var(--primario)"></div><span>--primario<br>botones, enlaces, barra</span></div>
+        <div class="color"><div style="background:var(--primario-osc)"></div><span>--primario-osc<br>hover, títulos de bloque</span></div>
+        <div class="color"><div style="background:var(--primario-claro)"></div><span>--primario-claro<br>menú activo</span></div>
+        <div class="color"><div style="background:var(--fondo)"></div><span>--fondo<br>fondo de página</span></div>
+        <div class="color"><div style="background:var(--exito-t)"></div><span>--exito-t<br>éxito, atendida</span></div>
+        <div class="color"><div style="background:var(--error-t)"></div><span>--error-t<br>errores, eliminar</span></div>
+        <div class="color"><div style="background:var(--aviso-t)"></div><span>--aviso-t<br>pendiente, advertencia</span></div>
+        <div class="color"><div style="background:var(--programada-t)"></div><span>--programada-t<br>cita programada</span></div>
+      </div>
+    </section>
+
+    <section class="muestra" id="pagina-lista">
+      <h3>2. Página de lista (encabezado + filtros + tabla)</h3>
+      <div class="encabezado"><h2>Pacientes</h2><a class="btn" href="#">Nuevo paciente</a></div>
+      <form class="filtros">
+        <label>Buscar<input name="criterio" placeholder="CI, nombre o expediente"></label>
+        <label>Estado<select name="estado"><option>Todos</option><option>Activo</option><option>Inactivo</option></select></label>
+        <button class="btn secundario">Filtrar</button>
+      </form>
+      <table class="tabla">
+        <thead><tr><th>Expediente</th><th>Paciente</th><th>CI</th><th>Teléfono</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody>
+          <tr><td>EXP-000001</td><td>María López</td><td>6543210</td><td>70012345</td><td><span class="insignia activo">Activo</span></td>
+              <td class="acciones"><a href="#">Ver</a><a href="#">Modificar</a><button class="btn-enlace peligro">Desactivar</button></td></tr>
+          <tr class="inactivo"><td>EXP-000002</td><td>Juan Pérez</td><td>7654321</td><td>71122334</td><td><span class="insignia inactivo">Inactivo</span></td>
+              <td class="acciones"><a href="#">Ver</a><button class="btn-enlace">Reactivar</button></td></tr>
+        </tbody>
+      </table>
+<pre>&lt;div class="encabezado"&gt;&lt;h2&gt;Pacientes&lt;/h2&gt;&lt;a class="btn" href="?r=pacientes/formulario"&gt;Nuevo paciente&lt;/a&gt;&lt;/div&gt;
+&lt;form class="filtros" method="get"&gt;&lt;input type="hidden" name="r" value="pacientes"&gt; ... &lt;/form&gt;
+&lt;table class="tabla"&gt; ... &lt;td&gt;&lt;?= insignia($p['estado']) ?&gt;&lt;/td&gt; ...
+  &lt;?php if (!$pacientes): ?&gt;&lt;tr&gt;&lt;td colspan="6" class="vacio"&gt;No se encontraron pacientes.&lt;/td&gt;&lt;/tr&gt;&lt;?php endif; ?&gt;
+&lt;/table&gt;</pre>
+    </section>
+
+    <section class="muestra" id="formulario">
+      <h3>3. Formulario con bloques (datos agrupados)</h3>
+      <form class="formulario ancho">
+        <fieldset class="bloque"><legend>Datos personales</legend>
+          <div class="fila">
+            <label><span class="obligatorio">Nombres</span><input name="nombres"></label>
+            <label><span class="obligatorio">Apellidos</span><input name="apellidos"></label>
+          </div>
+          <div class="fila-3">
+            <label><span class="obligatorio">CI</span><input name="ci" class="invalido" value="6543210"><small class="error-campo">Ya existe un paciente con ese documento</small></label>
+            <label><span class="obligatorio">Fecha de nacimiento</span><input type="date" name="fecha_nacimiento"></label>
+            <label><span class="obligatorio">Sexo</span><select name="sexo"><option>Femenino</option><option>Masculino</option></select></label>
+          </div>
+        </fieldset>
+        <fieldset class="bloque"><legend>Contacto</legend>
+          <div class="fila">
+            <label>Teléfono<input name="telefono"></label>
+            <label>Correo electrónico<input type="email" name="correo"></label>
+          </div>
+        </fieldset>
+        <div class="botones"><a class="btn secundario" href="#">Cancelar</a><button class="btn" type="button">Guardar</button></div>
+      </form>
+<pre>&lt;form method="post" action="?r=pacientes/guardar" class="formulario ancho"&gt;
+  &lt;?= campoCsrf() ?&gt;
+  &lt;fieldset class="bloque"&gt;&lt;legend&gt;Datos personales&lt;/legend&gt;
+    &lt;div class="fila"&gt;
+      &lt;label&gt;&lt;span class="obligatorio"&gt;Nombres&lt;/span&gt;
+        &lt;input name="nombres" value="&lt;?= e($paciente['nombres'] ?? '') ?&gt;" required&gt;
+        &lt;?= errorCampo($errores, 'nombres') ?&gt;
+      &lt;/label&gt; ...
+  &lt;div class="botones"&gt;&lt;a class="btn secundario" href="?r=pacientes"&gt;Cancelar&lt;/a&gt;&lt;button class="btn"&gt;Guardar&lt;/button&gt;&lt;/div&gt;
+&lt;/form&gt;</pre>
+    </section>
+
+    <section class="muestra" id="botones">
+      <h3>4. Botones y mensajes</h3>
+      <p class="acciones">
+        <button class="btn">Guardar</button>
+        <button class="btn secundario">Cancelar</button>
+        <button class="btn peligro">Cancelar cita</button>
+        <button class="btn pequeno">Confirmar</button>
+        <button class="btn-enlace">Modificar</button>
+        <button class="btn-enlace peligro">Desactivar</button>
+      </p>
+      <div class="alerta exito">Paciente registrado correctamente.</div>
+      <div class="alerta error">El horario seleccionado ya no está disponible.</div>
+      <div class="alerta aviso">El médico tiene 3 citas futuras que deben reprogramarse.</div>
+      <div class="alerta info">Seleccione una especialidad para ver los cupos.</div>
+<pre>Mensajes desde el control:  Sesion::flash('ok', 'Paciente registrado correctamente.');
+                            Sesion::flash('error', 'El horario seleccionado ya no está disponible.');
+Aviso dentro de una vista:  &lt;div class="alerta aviso"&gt;...&lt;/div&gt;
+Acción que borra o anula:   &lt;form method="post" data-confirmar="¿Cancelar la cita CM-0001?"&gt;...&lt;/form&gt;</pre>
+    </section>
+
+    <section class="muestra" id="estados">
+      <h3>5. Estados (siempre con insignia())</h3>
+      <p class="acciones">
+        <span class="insignia programada">Programada</span>
+        <span class="insignia confirmada">Confirmada</span>
+        <span class="insignia atendida">Atendida</span>
+        <span class="insignia cancelada">Cancelada</span>
+        <span class="insignia inasistencia">Inasistencia</span>
+      </p>
+      <p class="acciones">
+        <span class="insignia pendiente">Pendiente</span>
+        <span class="insignia pagado">Pagado</span>
+        <span class="insignia activo">Activo</span>
+        <span class="insignia inactivo">Inactivo</span>
+        <span class="insignia habilitada">Habilitada</span>
+        <span class="insignia suspendida">Suspendida</span>
+      </p>
+<pre>&lt;?= insignia($cita['estado']) ?&gt;        // 'PROGRAMADA' -&gt; Programada (azul)
+&lt;?= insignia((bool) $esp['estado']) ?&gt;  // true -&gt; Activo (verde)
+Formatos:  fecha($c['fecha']) -&gt; 15/11/2026 · hora($c['hora_inicio']) -&gt; 09:00 · bs($monto) -&gt; Bs 100,00</pre>
+    </section>
+
+    <section class="muestra" id="detalle">
+      <h3>6. Detalle y pestañas (historial del paciente)</h3>
+      <dl class="resumen">
+        <dt>Paciente</dt><dd>María López (EXP-000001)</dd>
+        <dt>Tipo de sangre</dt><dd>O+</dd>
+        <dt>Alergias</dt><dd>Penicilina</dd>
+      </dl>
+      <nav class="pestanas"><a href="#" class="activa">Citas</a><a href="#">Pagos</a><a href="#">Laboratorio</a></nav>
+      <table class="tabla">
+        <thead><tr><th>Código</th><th>Fecha</th><th>Hora</th><th>Especialidad</th><th>Médico</th><th>Estado</th></tr></thead>
+        <tbody><tr><td>CM-0001</td><td>15/11/2026</td><td>09:00</td><td>Medicina General</td><td>Dr. Juan Pérez</td><td><span class="insignia programada">Programada</span></td></tr></tbody>
+      </table>
+    </section>
+
+    <section class="muestra" id="agendar">
+      <h3>7. Agendar cita: pasos y cupos</h3>
+      <ol class="pasos"><li class="hecho">Paciente</li><li class="hecho">Especialidad</li><li class="actual">Horario</li><li>Confirmar</li></ol>
+      <div class="cupos">
+        <button class="cupo">08:00</button><button class="cupo">08:30</button><button class="cupo" disabled>09:00</button>
+        <button class="cupo elegido">09:30</button><button class="cupo">10:00</button><button class="cupo">10:30</button>
+      </div>
+<pre>&lt;ol class="pasos"&gt;&lt;li class="hecho"&gt;Paciente&lt;/li&gt;&lt;li class="actual"&gt;Horario&lt;/li&gt;...&lt;/ol&gt;
+&lt;div class="cupos"&gt;&lt;?php foreach ($cupos as $c): ?&gt;
+  &lt;button class="cupo" name="hora_inicio" value="&lt;?= e($c['hora_inicio']) ?&gt;"&gt;&lt;?= hora($c['hora_inicio']) ?&gt;&lt;/button&gt;
+&lt;?php endforeach; ?&gt;&lt;/div&gt;</pre>
+    </section>
+
+    <section class="muestra" id="panel">
+      <h3>8. Panel de indicadores (IUPanel, reportes)</h3>
+      <div class="indicadores">
+        <div class="indicador"><div class="valor">24</div><div class="rotulo">Citas de hoy</div></div>
+        <div class="indicador"><div class="valor">18</div><div class="rotulo">Confirmadas</div></div>
+        <div class="indicador"><div class="valor">3</div><div class="rotulo">Inasistencias del mes</div></div>
+        <div class="indicador"><div class="valor">Bs 4.200,00</div><div class="rotulo">Ingresos del mes</div></div>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>
