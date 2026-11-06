@@ -24,3 +24,7 @@ document.addEventListener('click', (ev) => {
 document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape') cambiarMenu(false);
 });
+
+// CU25 Asistente virtual: muestra siempre el último mensaje del chat
+const chat = document.querySelector('.chat');
+if (chat) chat.scrollTop = chat.scrollHeight;

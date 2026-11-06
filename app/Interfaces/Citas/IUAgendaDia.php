@@ -5,6 +5,7 @@
  * confirmarCita(id)                     -> ControlGestionarEstadosCita::confirmarCita()
  * marcarAtendida(id)                    -> ControlGestionarEstadosCita::marcarAtendida()
  * marcarInasistencia(id)                -> ControlGestionarEstadosCita::marcarInasistencia()
+ * reprogramarOCancelar(id)              -> ControlReprogramarCancelarCita::mostrarCita()   (CU16)
  * @var array $citas  @var array $medicos  @var int|null $medicoId  @var string $fecha  @var string $estado
  */
 use App\Nucleo\Sesion;
@@ -79,6 +80,10 @@ $puedeInasistencia = in_array($rol, ['ADMINISTRADOR', 'RECEPCIONISTA', 'MEDICO']
             <?= campoCsrf() ?><input type="hidden" name="cita_id" value="<?= (int) $cita['id'] ?>">
             <button class="btn-enlace peligro">Inasistencia</button>
           </form>
+        <?php endif; ?>
+
+        <?php if (in_array($cita['estado'], ['PROGRAMADA', 'CONFIRMADA'], true) && $puedeConfirmar && !$horaYaPaso): ?>
+          <a class="btn-enlace" href="?r=citas/cambiar&amp;id=<?= (int) $cita['id'] ?>">Reprogramar o cancelar</a>
         <?php endif; ?>
       </td>
     </tr>

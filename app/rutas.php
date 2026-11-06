@@ -7,14 +7,19 @@
  * modifica SOLO el bloque de tus CU. Así dos ramas nunca tocan las mismas líneas.
  */
 use App\Controles\Agendas\ControlConfigurarJornada;
+use App\Controles\Comunicacion\ControlAsistenteVirtual;
+use App\Controles\Comunicacion\ControlGestionarBaseConocimiento;
+use App\Controles\Comunicacion\ControlGestionarNotificaciones;
 use App\Controles\Citas\ControlAgendarCita;
 use App\Controles\Citas\ControlGestionarEstadosCita;
+use App\Controles\Citas\ControlReprogramarCancelarCita;
 use App\Controles\Citas\ControlVerificarDisponibilidad;
 use App\Controles\Especialidades\ControlGestionarEspecialidades;
 use App\Controles\Especialidades\ControlGestionarMedicos;
 use App\Controles\Pacientes\ControlGestionarPacientes;
 use App\Controles\Pacientes\ControlValidarRestricciones;
 use App\Controles\Pagos\ControlProcesarPago;
+use App\Controles\Reportes\ControlGenerarReportes;
 use App\Controles\Seguridad\ControlGestionarBitacora;
 use App\Controles\Seguridad\ControlGestionarCuentas;
 use App\Controles\Seguridad\ControlGestionarRoles;
@@ -86,4 +91,29 @@ return [
     'citas/estado/confirmar'     => [ControlGestionarEstadosCita::class, 'confirmarCita', 'POST'],
     'citas/estado/atender'       => [ControlGestionarEstadosCita::class, 'marcarAtendida', 'POST'],
     'citas/estado/inasistencia'  => [ControlGestionarEstadosCita::class, 'marcarInasistencia', 'POST'],
+    // CU16 Reprogramar y cancelar cita
+    'citas/proximas'             => [ControlReprogramarCancelarCita::class, 'listarCitas', 'GET'],
+    'citas/cambiar'              => [ControlReprogramarCancelarCita::class, 'mostrarCita', 'GET'],
+    'citas/reprogramar'          => [ControlReprogramarCancelarCita::class, 'reprogramarCita', 'POST'],
+    'citas/cancelar'             => [ControlReprogramarCancelarCita::class, 'cancelarCita', 'POST'],
+    // CU18 Reportes operativos
+    'reportes'                   => [ControlGenerarReportes::class, 'mostrarReportes', 'GET'],
+    'reportes/exportar'          => [ControlGenerarReportes::class, 'exportarReporte', 'GET'],
+    // CU24 Notificaciones y recordatorios
+    'notificaciones'             => [ControlGestionarNotificaciones::class, 'listarNotificaciones', 'GET'],
+    'notificaciones/leida'       => [ControlGestionarNotificaciones::class, 'marcarLeida', 'POST'],
+    'notificaciones/recordatorios' => [ControlGestionarNotificaciones::class, 'enviarRecordatorios', 'POST'],
+    'notificaciones/tarea'       => [ControlGestionarNotificaciones::class, 'ejecutarTareaProgramada', 'GET'],   // tarea diaria, sin sesión
+    // CU25 Asistente virtual (también para visitantes sin sesión)
+    'asistente'                  => [ControlAsistenteVirtual::class, 'mostrarChat', 'GET'],
+    'asistente/enviar'           => [ControlAsistenteVirtual::class, 'enviarMensaje', 'POST'],
+    'asistente/cerrar'           => [ControlAsistenteVirtual::class, 'cerrarConversacion', 'POST'],
+    // CU26 Base de conocimiento
+    'conocimiento'               => [ControlGestionarBaseConocimiento::class, 'listarPreguntas', 'GET'],
+    'conocimiento/formulario'    => [ControlGestionarBaseConocimiento::class, 'mostrarFormulario', 'GET'],
+    'conocimiento/guardar'       => [ControlGestionarBaseConocimiento::class, 'guardarPregunta', 'POST'],
+    'conocimiento/estado'        => [ControlGestionarBaseConocimiento::class, 'cambiarEstado', 'POST'],
+    // Paciente nuevo: registro en línea (extensión de CU01 / CU05)
+    'sesion/registro'            => [ControlIniciarSesion::class, 'mostrarRegistro', 'GET'],
+    'sesion/registro/guardar'    => [ControlIniciarSesion::class, 'registrarPaciente', 'POST'],
 ];

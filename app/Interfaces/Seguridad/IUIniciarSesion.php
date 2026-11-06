@@ -23,3 +23,8 @@
   <button class="btn grande" <?= !empty($bloqueado) ? 'disabled aria-disabled="true"' : '' ?>>Ingresar</button>
   <p class="centrado"><a href="?r=sesion/recuperar">¿Olvidó su contraseña?</a></p>
 </form>
+<div class="alerta info">
+  <strong>¿Es su primera vez en la clínica?</strong>
+  <a href="?r=sesion/registro">Regístrese como paciente nuevo</a> y agende su cita en línea,
+  o acérquese a recepción. También puede consultar al <a href="?r=asistente">asistente virtual</a> sin iniciar sesión.
+</div>

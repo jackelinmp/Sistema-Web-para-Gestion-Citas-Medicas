@@ -177,8 +177,9 @@ small, .suave { color: var(--texto-suave); font-size: var(--t-chico); }
 .insignia { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
 .insignia.programada   { background: var(--programada);   color: var(--programada-t); }
 .insignia.confirmada   { background: var(--confirmada);   color: var(--confirmada-t); }
-.insignia.atendida, .insignia.activo, .insignia.activa, .insignia.habilitada, .insignia.pagado, .insignia.resultado_disponible { background: var(--atendida); color: var(--atendida-t); }
+.insignia.atendida, .insignia.activo, .insignia.activa, .insignia.habilitada, .insignia.pagado, .insignia.resultado_disponible, .insignia.enviado { background: var(--atendida); color: var(--atendida-t); }
 .insignia.cancelada, .insignia.cancelado, .insignia.inactivo, .insignia.inactiva, .insignia.anulado, .insignia.cerrada { background: var(--cancelada); color: var(--cancelada-t); }
+.insignia.reembolsado { background: var(--info); color: var(--info-t); }
 .insignia.inasistencia { background: var(--inasistencia); color: var(--inasistencia-t); }
 .insignia.pendiente, .insignia.solicitado { background: var(--aviso); color: var(--aviso-t); }
 .insignia.suspendida { background: var(--error); color: var(--error-t); }
@@ -329,3 +330,17 @@ body.publica .acceso-form { background: #fff; }
 .vacio-grande{text-align:center;padding:48px 16px;color:var(--suave,#64748b)}
 .vacio-grande h2{margin:12px 0 6px;color:inherit}
 .acciones{margin-top:16px;display:flex;gap:8px}
+
+/* 20. CICLO 2 — GRUPO 1: asistente virtual (CU25) y aviso de notificaciones (CU24) */
+.chat { display: flex; flex-direction: column; gap: var(--esp-2); max-height: 55vh; overflow-y: auto; padding: var(--esp-4);
+        background: var(--superficie-2); border: 1px solid var(--borde); border-radius: var(--radio-g); margin-bottom: var(--esp-3); }
+.chat-mensaje { max-width: 80%; padding: var(--esp-2) var(--esp-3); border-radius: var(--radio); line-height: 1.45; overflow-wrap: anywhere; }
+.chat-mensaje small { display: block; margin-top: 2px; font-size: 11px; color: var(--texto-suave); }
+.chat-mensaje.asistente { align-self: flex-start; background: var(--superficie); border: 1px solid var(--borde); }
+.chat-mensaje.propio { align-self: flex-end; background: var(--primario-claro); color: var(--texto); }
+.chat-sugerencias { display: flex; flex-wrap: wrap; gap: var(--esp-2); margin-bottom: var(--esp-3); }
+.chat-sugerencias .cupo { padding: 6px 12px; }
+.chat-formulario { display: flex; gap: var(--esp-2); }
+.chat-formulario input { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--borde); border-radius: var(--radio); font: inherit; }
+.contador-avisos { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 10px;
+                   background: var(--acento); color: #fff; font-size: 12px; font-weight: 700; text-align: center; }

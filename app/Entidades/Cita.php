@@ -3,7 +3,7 @@ namespace App\Entidades;
 
 use App\Nucleo\EntidadBase;
 
-/** «entity» Cita — tabla cita (CU08, CU11, CU13, CU14). */
+/** «entity» Cita — tabla cita (CU08, CU11, CU13, CU14, CU15, CU16, CU17, CU18). */
 final class Cita extends EntidadBase
 {
     /** Citas activas a futuro de una especialidad (excepción "desactivar con citas programadas" de CU08). */
@@ -36,18 +36,20 @@ final class Cita extends EntidadBase
         return $st->fetch();
     }
 
-    /** CU14: datos de la constancia de la cita. */
+    /** CU14 y CU16: datos completos de una cita (constancia y pantalla de cambio). */
     public function obtenerDetalle(int $id): ?array
     {
         $st = $this->bd->prepare("SELECT c.id, c.codigo, c.fecha, c.hora_inicio, c.hora_fin, c.estado, c.motivo_consulta, c.paciente_id,
+                                         c.medico_id, c.especialidad_id, c.veces_reprogramada, c.motivo_cancelacion,
                                          pp.nombres || ' ' || pp.apellidos AS paciente, pa.nro_expediente,
                                          pm.nombres || ' ' || pm.apellidos AS medico, e.nombre AS especialidad,
-                                         e.costo_consulta
+                                         e.costo_consulta, pg.estado AS pago_estado, pg.monto
                                     FROM cita c
                                     JOIN paciente pa ON pa.persona_id = c.paciente_id
                                     JOIN persona pp  ON pp.id = c.paciente_id
                                     JOIN persona pm  ON pm.id = c.medico_id
                                     JOIN especialidad e ON e.id = c.especialidad_id
+                                    LEFT JOIN pago pg ON pg.cita_id = c.id
                                    WHERE c.id = :id");
         $st->execute(['id' => $id]);
         return $st->fetch() ?: null;
@@ -77,10 +79,11 @@ final class Cita extends EntidadBase
         return $st->fetchAll();
     }
 
-    /** CU15/CU16/CU17: datos mínimos de la cita que se va a modificar. */
+    /** CU15/CU16/CU17: datos de la cita que se va a modificar. */
     public function obtenerParaGestion(int $id): ?array
     {
-        $st = $this->bd->prepare('SELECT id, codigo, paciente_id, medico_id, fecha, hora_inicio, estado
+        $st = $this->bd->prepare('SELECT id, codigo, paciente_id, medico_id, especialidad_id, fecha, hora_inicio, hora_fin,
+                                         estado, veces_reprogramada
                                     FROM cita WHERE id = :id');
         $st->execute(['id' => $id]);
         return $st->fetch() ?: null;
@@ -111,5 +114,96 @@ final class Cita extends EntidadBase
                                                         AND c.hora_inicio >= j.hora_inicio AND c.hora_fin <= j.hora_fin)");
         $st->execute(['medico' => $medico_id]);
         return (int) $st->fetchColumn();
+    }
+
+    // ------------------------------------------------------------------ CU16 Reprogramar y cancelar
+
+    /**
+     * CU16: citas activas desde hoy (Programada o Confirmada).
+     * $pacienteId limita a un paciente (el rol PACIENTE solo ve las suyas); $criterio busca por paciente, CI o código.
+     */
+    public function listarProximas(?int $pacienteId, string $criterio = ''): array
+    {
+        $st = $this->bd->prepare("SELECT id, codigo, fecha, hora_inicio, hora_fin, estado, paciente, paciente_ci, medico,
+                                         especialidad, pago_estado, veces_reprogramada
+                                    FROM vw_citas_detalle
+                                   WHERE estado IN ('PROGRAMADA', 'CONFIRMADA') AND fecha >= current_date
+                                     AND (CAST(:p AS bigint) IS NULL OR paciente_id = :p2)
+                                     AND (CAST(:c AS text) = '' OR paciente ILIKE :l1 OR paciente_ci ILIKE :l2 OR codigo ILIKE :l3)
+                                   ORDER BY fecha, hora_inicio
+                                   LIMIT 100");
+        $like = '%' . $criterio . '%';
+        $st->execute(['p' => $pacienteId, 'p2' => $pacienteId, 'c' => $criterio, 'l1' => $like, 'l2' => $like, 'l3' => $like]);
+        return $st->fetchAll();
+    }
+
+    /** CU16: mueve la misma cita a otro médico, fecha y hora (sp_reprogramar_cita valida estado y fecha). */
+    public function reprogramar(int $id, int $medicoId, string $fecha, string $horaInicio, string $horaFin, int $usuarioId): void
+    {
+        $this->bd->prepare('SELECT sp_reprogramar_cita(:id, :medico, CAST(:fecha AS date), CAST(:ini AS time), CAST(:fin AS time), :usuario)')
+                 ->execute(['id' => $id, 'medico' => $medicoId, 'fecha' => $fecha, 'ini' => $horaInicio,
+                            'fin' => $horaFin, 'usuario' => $usuarioId]);
+    }
+
+    /** CU16: guarda el motivo y pasa la cita a CANCELADA (el pago se anula o queda para reembolso). */
+    public function cancelar(int $id, string $motivo, int $usuarioId): void
+    {
+        $this->bd->prepare('UPDATE cita SET motivo_cancelacion = :motivo WHERE id = :id')
+                 ->execute(['motivo' => $motivo, 'id' => $id]);
+        $this->cambiarEstado($id, 'CANCELADA', $usuarioId);
+    }
+
+    // ------------------------------------------------------------------ CU18 Reportes operativos
+
+    /** CU18: totales del periodo por estado. */
+    public function resumirPeriodo(string $desde, string $hasta): array
+    {
+        $st = $this->bd->prepare("SELECT count(*) AS citas,
+                                         count(*) FILTER (WHERE estado = 'ATENDIDA')     AS atendidas,
+                                         count(*) FILTER (WHERE estado = 'CANCELADA')    AS canceladas,
+                                         count(*) FILTER (WHERE estado = 'INASISTENCIA') AS inasistencias,
+                                         count(*) FILTER (WHERE estado IN ('PROGRAMADA', 'CONFIRMADA')) AS pendientes
+                                    FROM cita WHERE fecha BETWEEN CAST(:d AS date) AND CAST(:h AS date)");
+        $st->execute(['d' => $desde, 'h' => $hasta]);
+        return $st->fetch();
+    }
+
+    /** CU18: productividad por médico (citas por estado, % de inasistencia e ingresos cobrados). */
+    public function reportarProductividad(string $desde, string $hasta): array
+    {
+        $st = $this->bd->prepare("SELECT p.nombres || ' ' || p.apellidos AS medico,
+                                         count(c.id) AS citas,
+                                         count(c.id) FILTER (WHERE c.estado = 'ATENDIDA')     AS atendidas,
+                                         count(c.id) FILTER (WHERE c.estado = 'CANCELADA')    AS canceladas,
+                                         count(c.id) FILTER (WHERE c.estado = 'INASISTENCIA') AS inasistencias,
+                                         round(100.0 * count(c.id) FILTER (WHERE c.estado = 'INASISTENCIA')
+                                               / NULLIF(count(c.id) FILTER (WHERE c.estado IN ('ATENDIDA', 'INASISTENCIA')), 0), 1) AS pct_inasistencia,
+                                         COALESCE(sum(pg.monto) FILTER (WHERE pg.estado = 'PAGADO'), 0) AS ingresos
+                                    FROM medico m
+                                    JOIN persona p ON p.id = m.persona_id
+                                    JOIN cita c ON c.medico_id = m.persona_id
+                                               AND c.fecha BETWEEN CAST(:d AS date) AND CAST(:h AS date)
+                                    LEFT JOIN pago pg ON pg.cita_id = c.id
+                                   GROUP BY m.persona_id, p.nombres, p.apellidos
+                                   ORDER BY atendidas DESC, medico");
+        $st->execute(['d' => $desde, 'h' => $hasta]);
+        return $st->fetchAll();
+    }
+
+    /** CU18 (alimentado por CU17): inasistencias por especialidad sobre las citas que ya debían ocurrir. */
+    public function reportarAusentismo(string $desde, string $hasta): array
+    {
+        $st = $this->bd->prepare("SELECT e.nombre AS especialidad,
+                                         count(*) AS citas_vencidas,
+                                         count(*) FILTER (WHERE c.estado = 'INASISTENCIA') AS inasistencias,
+                                         round(100.0 * count(*) FILTER (WHERE c.estado = 'INASISTENCIA') / count(*), 1) AS pct_inasistencia
+                                    FROM cita c
+                                    JOIN especialidad e ON e.id = c.especialidad_id
+                                   WHERE c.fecha BETWEEN CAST(:d AS date) AND CAST(:h AS date)
+                                     AND c.estado IN ('ATENDIDA', 'INASISTENCIA')
+                                   GROUP BY e.nombre
+                                   ORDER BY pct_inasistencia DESC, especialidad");
+        $st->execute(['d' => $desde, 'h' => $hasta]);
+        return $st->fetchAll();
     }
 }

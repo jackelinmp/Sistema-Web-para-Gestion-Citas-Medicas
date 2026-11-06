@@ -90,6 +90,9 @@ $iniciales = $usuario ? mb_strtoupper(mb_substr(preg_replace('/[^\p{L} ]/u', '',
             <strong>Clínica Vida Salud</strong>
           <?php endif; ?>
         </div>
+        <?php if ($usuario['rol'] === 'PACIENTE' && ($avisos = (new \App\Entidades\Notificacion())->contarNoLeidas((int) $usuario['id'])) > 0): ?>
+          <a class="btn-enlace enlace-barra" href="?r=notificaciones">Notificaciones<span class="contador-avisos"><?= (int) $avisos ?></span></a>
+        <?php endif; ?>
         <span class="rol-chip"><?= e($usuario['rol']) ?></span>
         <a class="btn-enlace enlace-barra" href="?r=sesion/cambiar">Cambiar contraseña</a>
       <?php else: ?>
