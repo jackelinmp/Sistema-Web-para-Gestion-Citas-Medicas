@@ -16,6 +16,17 @@ final class Persona extends EntidadBase
         return (bool) $st->fetchColumn();
     }
 
+    /** Busca una persona por CI y devuelve su id junto con el id de usuario (si tiene cuenta). */
+    public function buscarPorCi(string $ci): ?array
+    {
+        $st = $this->bd->prepare('SELECT p.id, p.ci, u.id AS usuario_id
+                                  FROM persona p
+                                  LEFT JOIN usuario u ON u.persona_id = p.id
+                                  WHERE p.ci = :ci');
+        $st->execute(['ci' => $ci]);
+        return $st->fetch() ?: null;
+    }
+
     public function insertar(array $d): int
     {
         $st = $this->bd->prepare('INSERT INTO persona (ci, nombres, apellidos, fecha_nacimiento, sexo, telefono, direccion)
