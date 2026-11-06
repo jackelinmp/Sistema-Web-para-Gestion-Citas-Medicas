@@ -35,8 +35,9 @@ final class ControlProcesarPago extends ControlBase
         Sesion::exigirPermiso('PAGOS', 'C');
         $pago = $this->pagoAutorizado((int) ($_GET['cita_id'] ?? 0));
         $this->vista('Pagos/IUDetallePago', [
-            'pago' => $pago, 'stripe' => ServicioStripe::configurado(),
-            'puedePagar' => Sesion::puede('PAGOS', 'R') && $pago['pago_estado'] === 'PENDIENTE' && $pago['cita_estado'] === 'PROGRAMADA',
+            'pago'        => $pago,
+            'stripe'      => ServicioStripe::configurado(),
+            'puedePagar'  => $pago['pago_estado'] === 'PENDIENTE' && $pago['cita_estado'] === 'PROGRAMADA',
             'puedeSeguro' => Sesion::puede('PAGOS', 'R') && $this->soloPaciente() === null && $pago['pago_estado'] === 'PENDIENTE'
                              && $pago['cita_estado'] === 'PROGRAMADA' && $pago['aseguradora_id'] !== null,
             'esPersonal'  => $this->soloPaciente() === null,
