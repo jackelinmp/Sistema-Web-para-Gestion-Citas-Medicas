@@ -119,8 +119,8 @@ final class ControlAgendarCita extends ControlBase
             Sesion::flash('error', $this->mensajeBaseDatos($e));
             $this->redirigir($volver);
         }
-        Sesion::flash('ok', 'Cita ' . $cita['codigo'] . ' registrada en estado Programada.');
-        $this->redirigir('citas/constancia&id=' . (int) $cita['id']);
+        Sesion::flash('ok', 'Cita ' . $cita['codigo'] . ' registrada en estado Programada. Complete el pago para confirmar la reserva.');
+        $this->redirigir('pagos/detalle&cita_id=' . (int) $cita['id']);
     }
 
     /** Constancia de la cita registrada. */
