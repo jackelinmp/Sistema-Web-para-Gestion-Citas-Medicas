@@ -145,6 +145,8 @@ final class ControlAgendarCita extends ControlBase
         if (($usuario['rol'] ?? '') === 'PACIENTE') {               // el paciente solo agenda para sí mismo
             $pacienteId = (int) $usuario['persona_id'];
         }
+        $rol = $usuario['rol'] ?? '';
+        $origenCita = self::ORIGEN[$rol] ?? 'RECEPCION';
         return [
             'criterio'        => trim((string) ($origen['criterio'] ?? '')),
             'paciente_id'     => $pacienteId,
@@ -153,6 +155,7 @@ final class ControlAgendarCita extends ControlBase
             'fecha'           => (string) ($origen['fecha'] ?? date('Y-m-d')),
             'hora_inicio'     => (string) ($origen['hora_inicio'] ?? ''),
             'motivo_consulta' => trim((string) ($origen['motivo_consulta'] ?? '')),
+            'origen'          => $origenCita,
         ];
     }
 
