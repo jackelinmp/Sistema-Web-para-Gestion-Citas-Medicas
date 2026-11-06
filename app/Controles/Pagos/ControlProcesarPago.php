@@ -39,6 +39,7 @@ final class ControlProcesarPago extends ControlBase
             'puedePagar' => Sesion::puede('PAGOS', 'R') && $pago['pago_estado'] === 'PENDIENTE' && $pago['cita_estado'] === 'PROGRAMADA',
             'puedeSeguro' => Sesion::puede('PAGOS', 'R') && $this->soloPaciente() === null && $pago['pago_estado'] === 'PENDIENTE'
                              && $pago['cita_estado'] === 'PROGRAMADA' && $pago['aseguradora_id'] !== null,
+            'esPersonal'  => $this->soloPaciente() === null,
         ]);
     }
 
@@ -126,6 +127,38 @@ final class ControlProcesarPago extends ControlBase
             $this->responder(400, 'descartado');
         }
         $this->responder(200, 'ok');
+    }
+
+    /** Registra un pago manual (efectivo, QR o transferencia) y confirma la cita. */
+    public function registrarPagoManual(): void
+    {
+        Sesion::exigirPermiso('PAGOS', 'R');
+        $citaId = (int) ($_POST['cita_id'] ?? 0);
+        $pago = $this->pagoAutorizado($citaId);
+        if ($this->soloPaciente() !== null) {
+            Sesion::denegar('Pago manual no permitido (cita ' . $citaId . ')');
+        }
+        $this->exigirPendiente($pago);
+        $metodo = (string) ($_POST['metodo'] ?? '');
+        if (!in_array($metodo, ['EFECTIVO', 'QR', 'TRANSFERENCIA'], true)) {
+            Sesion::flash('error', 'Seleccione un método de pago válido.');
+            $this->redirigir('pagos/detalle&cita_id=' . $citaId);
+        }
+        $referencia = trim((string) ($_POST['referencia'] ?? '')) ?: null;
+        $usuario = (int) $this->idUsuario();
+        try {
+            Conexion::transaccion(function () use ($citaId, $usuario, $metodo, $referencia) {
+                $p = new Pago();
+                $p->obtenerPorCita($citaId, true);
+                $p->registrarPago($citaId, $metodo, $usuario, $referencia);
+                $p->confirmarCita($citaId, $usuario);
+            });
+        } catch (\PDOException $e) {
+            Sesion::flash('error', $this->mensajeBaseDatos($e));
+            $this->redirigir('pagos/detalle&cita_id=' . $citaId);
+        }
+        Sesion::flash('ok', 'Pago registrado por ' . $metodo . '. Comprobante generado.');
+        $this->redirigir('pagos/detalle&cita_id=' . $citaId);
     }
 
     /** Confirma por seguro médico (solo personal): se registra la referencia de la póliza. */

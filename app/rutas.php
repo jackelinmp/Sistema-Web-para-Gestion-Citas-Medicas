@@ -83,6 +83,7 @@ return [
     'pagos/cancelado'            => [ControlProcesarPago::class, 'pagoCancelado', 'GET'],
     'pagos/webhook'              => [ControlProcesarPago::class, 'recibirNotificacion', 'POST', 'sin_csrf'],
     'pagos/seguro'               => [ControlProcesarPago::class, 'confirmarPorSeguro', 'POST'],
+'pagos/registrar'            => [ControlProcesarPago::class, 'registrarPagoManual', 'POST'],
     'pagos/comprobante'          => [ControlProcesarPago::class, 'descargarComprobante', 'GET'],
 
     // ===================== CICLO 2 — GRUPO 1 =====================

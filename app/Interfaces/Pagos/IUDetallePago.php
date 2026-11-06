@@ -54,4 +54,22 @@
       <button class="btn secundario">Confirmar por seguro</button>
     </form>
   <?php endif; ?>
+
+  <?php if ($puedePagar && $pago['pago_estado'] === 'PENDIENTE' && $esPersonal): ?>
+    <hr>
+    <h3>Pago en recepcion (efectivo, QR o transferencia)</h3>
+    <form method="post" action="?r=pagos/registrar" class="filtros"><?= campoCsrf() ?>
+      <input type="hidden" name="cita_id" value="<?= (int) $pago['cita_id'] ?>">
+      <label>Metodo
+        <select name="metodo" required>
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="QR">QR</option>
+          <option value="TRANSFERENCIA">Transferencia</option>
+        </select>
+      </label>
+      <label>Referencia (opcional)<input name="referencia" maxlength="100" placeholder="Nro. de operacion / comprobante"></label>
+      <button class="btn secundario">Registrar pago</button>
+    </form>
+    <p class="suave">Para QR: mostrar el codigo QR de la clinica al paciente; al confirmar el pago, registrarlo aqui.</p>
+  <?php endif; ?>
 </div>
