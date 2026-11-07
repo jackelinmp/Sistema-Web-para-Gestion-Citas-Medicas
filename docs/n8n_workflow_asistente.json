@@ -1,0 +1,74 @@
+{
+  "name": "Clinica Vida Salud - Asistente Virtual",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clinica-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-clinica",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "clinica-chat"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = ($input.first().json.mensaje || '').toString().toLowerCase();\nconst convId = $input.first().json.conversacion_id || '';\nconst usuario = $input.first().json.usuario_id || null;\n\n// Intenciones simples (ejemplo). Reemplaza/añade las tuyas.\nlet intencion = 'GENERAL';\nlet respuesta = '';\n\nif (msg.includes('mis citas') || msg.includes('mis proximas')) {\n  intencion = 'MIS_CITAS';\n  respuesta = 'Para ver sus citas, inicie sesion y consulte \"Mis citas\". Si ya esta logueado, le listo sus proximas citas.';\n} else if (msg.includes('horario') || msg.includes('hora de atencion')) {\n  intencion = 'HORARIOS';\n  respuesta = 'La atencion es de lunes a viernes. Consulte la disponibilidad por especialidad en \"Disponibilidad horaria\" para ver los cupos libres.';\n} else if (msg.includes('cancelar') || msg.includes('reprogramar')) {\n  intencion = 'CAMBIOS';\n  respuesta = 'Puede reprogramar o cancelar sus citas desde \"Mis citas\", con al menos 24 horas de anticipacion.';\n} else if (msg.includes('hola') || msg.includes('buenos')) {\n  intencion = 'SALUDO';\n  respuesta = 'Hola, soy el asistente de la Clinica Vida Salud. Puedo ayudarle con horarios, sus citas y dudas generales.';\n} else {\n  intencion = 'SIN_RESPUESTA';\n  respuesta = 'No tengo una respuesta para esa consulta. Se la paso al personal para que la revise.';\n}\n\n// (Opcional) Llamar a un LLM: descomenta y configura la credencial HTTP en n8n.\n// const r = await this.helpers.httpRequest({ method: 'POST', url: 'https://api.openai.com/v1/chat/completions', headers: { Authorization: 'Bearer ' + $env.OPENAI_API_KEY, 'Content-Type': 'application/json' }, body: { model: 'gpt-4o-mini', messages: [{role:'user', content: msg}] }, json: true });\n// respuesta = r.choices?.[0]?.message?.content || respuesta;\n\nreturn [{ json: { respuesta, intencion, conversacion_id: convId } }];"
+      },
+      "id": "code-procesar",
+      "name": "Procesar mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "respond-webhook",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Procesar mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar mensaje": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "clinica-asistente",
+  "tags": []
+}

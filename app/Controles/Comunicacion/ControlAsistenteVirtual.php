@@ -6,6 +6,7 @@ use App\Entidades\Conversacion;
 use App\Entidades\PreguntaFrecuente;
 use App\Nucleo\Config;
 use App\Nucleo\ControlBase;
+use App\Servicios\ServicioIA;
 use App\Nucleo\Sesion;
 
 /**
@@ -80,6 +81,17 @@ final class ControlAsistenteVirtual extends ControlBase
      */
     private function responder(string $texto, string $convId): array
     {
+        // 1) Intentar con IA (si esta configurada). Se le pasa la base de conocimiento como contexto.
+        if (ServicioIA::configurado()) {
+            $faqAll = (new PreguntaFrecuente())->listar();
+            $contexto = array_map(fn($f) => ['pregunta' => $f['pregunta'], 'respuesta' => $f['respuesta']], $faqAll);
+            $respuestaIA = ServicioIA::responder($texto, $contexto);
+            if ($respuestaIA !== null) {
+                return ['IA', $respuestaIA];
+            }
+        }
+
+        // 2) n8n (opcional, si esta configurado).
         // Si n8n está configurado, delegar la respuesta al flujo externo (opcional, sin costo si es self-hosted).
         $n8n = (string) Config::obtener('N8N_WEBHOOK_URL');
         if ($n8n !== '') {
