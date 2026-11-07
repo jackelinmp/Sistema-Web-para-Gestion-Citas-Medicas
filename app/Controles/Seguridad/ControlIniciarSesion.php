@@ -85,25 +85,32 @@ final class ControlIniciarSesion extends ControlBase
             Conexion::obtener()->prepare("UPDATE paciente SET estado = 'PRE_REGISTRADO', fecha_pre_registro = now() WHERE persona_id = :id")
                 ->execute(['id' => $personaId]);
         }
-        // Generar OTP
-        $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        (new OtpVerificacion())->crear($personaId, $telefono, $codigo, 5);
-        // Enviar OTP: email (si hay correo y SMTP configurado) → WhatsApp (si configurado) → debug (pantalla)
-        $otpDebug = null;
-        $enviado = false;
-        if ($correo !== '' && ServicioCorreo::configurado()) {
-            $enviado = (new ServicioCorreo())->enviarOtp($correo, 'Paciente', $codigo);
-        } elseif (ServicioWhatsApp::configurado()) {
-            $enviado = ServicioWhatsApp::enviarOtp($telefono, $codigo);
-        } else {
-            $enviado = true;
-            $otpDebug = $codigo; // modo debug: mostrar en pantalla
+        // Generar OTP solo si hay canal de envío (email o WhatsApp); si no, solo pre-registro
+        $hayCanal = ($correo !== '' && ServicioCorreo::configurado()) || ServicioWhatsApp::configurado();
+        if ($hayCanal) {
+            $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            (new OtpVerificacion())->crear($personaId, $telefono, $codigo, 5);
+            $otpDebug = null;
+            $enviado = false;
+            if ($correo !== '' && ServicioCorreo::configurado()) {
+                $enviado = (new ServicioCorreo())->enviarOtp($correo, 'Paciente', $codigo);
+            } elseif (ServicioWhatsApp::configurado()) {
+                $enviado = ServicioWhatsApp::enviarOtp($telefono, $codigo);
+            } else {
+                $enviado = true;
+                $otpDebug = $codigo;
+            }
+            $_SESSION['pre_registro_paciente_id'] = $personaId;
+            $_SESSION['pre_registro_telefono'] = $telefono;
+            $_SESSION['pre_registro_correo'] = $correo;
+            $this->vista('Seguridad/IUVerificarOtp', ['telefono' => $telefono, 'otpDebug' => $otpDebug,
+                'error' => $enviado ? null : 'No se pudo enviar el código. Intente nuevamente.'], 'publica');
+            return;
         }
-        $_SESSION['pre_registro_paciente_id'] = $personaId;
-        $_SESSION['pre_registro_telefono'] = $telefono;
-        $_SESSION['pre_registro_correo'] = $correo;
-        $this->vista('Seguridad/IUVerificarOtp', ['telefono' => $telefono, 'otpDebug' => $otpDebug,
-            'error' => $enviado ? null : 'No se pudo enviar el código. Intente nuevamente.'], 'publica');
+        // Sin canal de envío: pre-registro simple, recepción activa
+        unset($_SESSION['pre_registro_paciente_id'], $_SESSION['pre_registro_telefono'], $_SESSION['pre_registro_correo']);
+        Sesion::flash('ok', 'Pre-registro completado. Presentese en recepcion para validar su carnet y activar su cuenta.');
+        $this->redirigir('sesion/formulario');
     }
 
     public function mostrarVerificarOtp(): void
