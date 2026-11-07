@@ -65,15 +65,15 @@ return [
         'paquetes' => [
             ['id' => 'P2', 'titulo' => 'Pacientes', 'items' => [
                 ['cu' => 'CU22', 'texto' => 'Grupo familiar', 'desc' => 'Vincula a un responsable con sus dependientes.',
-                 'ruta' => null, 'rutas' => [], 'modulo' => 'PACIENTES', 'accion' => 'C', 'icono' => 'usuarios', 'listo' => false],
+                 'ruta' => 'grupo-familiar', 'rutas' => ['grupo-familiar'], 'modulo' => 'PACIENTES', 'accion' => 'C', 'icono' => 'usuarios', 'listo' => true],
             ]],
             ['id' => 'P3', 'titulo' => 'Especialidades y médicos', 'items' => [
                 ['cu' => 'CU10', 'texto' => 'Dar de baja a médico', 'desc' => 'Baja lógica que conserva el historial.',
-                 'ruta' => null, 'rutas' => [], 'modulo' => 'ESPECIALIDADES_MEDICOS', 'accion' => 'C', 'icono' => 'medico', 'listo' => false],
+                 'ruta' => 'bajas', 'rutas' => ['bajas'], 'modulo' => 'ESPECIALIDADES_MEDICOS', 'accion' => 'C', 'icono' => 'medico', 'listo' => true],
             ]],
             ['id' => 'P4', 'titulo' => 'Agendas y horarios', 'items' => [
                 ['cu' => 'CU12', 'texto' => 'Bloqueos de agenda', 'desc' => 'Ausencias y vacaciones que quitan cupos.',
-                 'ruta' => null, 'rutas' => [], 'modulo' => 'AGENDAS', 'accion' => 'C', 'icono' => 'reloj', 'listo' => false],
+                 'ruta' => 'bloqueos', 'rutas' => ['bloqueos'], 'modulo' => 'AGENDAS', 'accion' => 'C', 'icono' => 'reloj', 'listo' => true],
             ]],
             ['id' => 'P5', 'titulo' => 'Citas médicas', 'items' => [
                 ['cu' => 'CU15', 'texto' => 'Estados de cita', 'desc' => 'Programada, confirmada, atendida, cancelada.',
@@ -89,15 +89,15 @@ return [
             ]],
             ['id' => 'P7', 'titulo' => 'Pagos y transacciones', 'items' => [
                 ['cu' => 'CU20', 'texto' => 'Consultar pagos y comprobantes', 'desc' => 'Historial de pagos y descarga de comprobantes.',
-                 'ruta' => null, 'rutas' => [], 'modulo' => 'PAGOS', 'accion' => 'C', 'icono' => 'tarjeta', 'listo' => false],
+                 'ruta' => 'comprobantes', 'rutas' => ['comprobantes'], 'modulo' => 'PAGOS', 'accion' => 'C', 'icono' => 'tarjeta', 'listo' => true],
             ]],
             ['id' => 'P8', 'titulo' => 'Historial clínico y laboratorio', 'items' => [
                 ['cu' => 'CU07', 'texto' => 'Historial del paciente', 'desc' => 'Citas y atenciones anteriores del paciente.',
-                 'ruta' => null, 'rutas' => [], 'modulo' => 'PACIENTES', 'accion' => 'C', 'icono' => 'libro', 'listo' => false],
+                 'ruta' => 'historial', 'rutas' => ['historial'], 'modulo' => 'PACIENTES', 'accion' => 'C', 'icono' => 'libro', 'listo' => true],
                 ['cu' => 'CU21', 'texto' => 'Ficha clínica básica', 'desc' => 'Antecedentes, alergias y datos clínicos.',
-                 'ruta' => null, 'rutas' => [], 'modulo' => 'PACIENTES', 'accion' => 'C', 'icono' => 'paciente', 'listo' => false],
+                 'ruta' => 'ficha', 'rutas' => ['ficha'], 'modulo' => 'PACIENTES', 'accion' => 'C', 'icono' => 'paciente', 'listo' => true],
                 ['cu' => 'CU23', 'texto' => 'Resultados de laboratorio', 'desc' => 'Carga y descarga de resultados de exámenes.',
-                 'ruta' => null, 'rutas' => [], 'modulo' => 'EXAMENES', 'accion' => 'C', 'icono' => 'frasco', 'listo' => false],
+                 'ruta' => 'laboratorio', 'rutas' => ['laboratorio'], 'modulo' => 'EXAMENES', 'accion' => 'C', 'icono' => 'frasco', 'listo' => true],
             ]],
             ['id' => 'P9', 'titulo' => 'Notificaciones y recordatorios', 'items' => [
                 ['cu' => 'CU24', 'texto' => 'Notificaciones y recordatorios', 'desc' => 'Avisos por correo y en pantalla de citas registradas, cambiadas o canceladas, y recordatorio del día anterior.',

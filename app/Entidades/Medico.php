@@ -110,4 +110,10 @@ final class Medico extends EntidadBase
         $st->execute(['esp' => $especialidad_id]);
         return $st->fetchAll();
     }
+    /** CU10: ACTIVO o INACTIVO (baja lógica: conserva su historial de citas). */
+    public function cambiarEstado(int $persona_id, string $estado): void
+    {
+        $this->bd->prepare('UPDATE medico SET estado = :estado WHERE persona_id = :id')
+                 ->execute(['estado' => $estado, 'id' => $persona_id]);
+    }
 }

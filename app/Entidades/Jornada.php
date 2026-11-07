@@ -35,4 +35,10 @@ final class Jornada extends EntidadBase
                            'fin' => $d['hora_fin'], 'dur' => $d['duracion_bloque_min']]);
         }
     }
+    /** CU10: al dar de baja al médico su jornada deja de estar vigente (se conserva como historial). */
+    public function cerrarVigente(int $medico_id): void
+    {
+        $this->bd->prepare('UPDATE jornada SET vigente = false WHERE medico_id = :m AND vigente')
+                 ->execute(['m' => $medico_id]);
+    }
 }
