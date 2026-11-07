@@ -88,11 +88,20 @@ final class ControlIniciarSesion extends ControlBase
         // Generar OTP
         $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         (new OtpVerificacion())->crear($personaId, $telefono, $codigo, 5);
-        // Enviar por WhatsApp (o debug)
-        $enviado = ServicioWhatsApp::enviarOtp($telefono, $codigo);
-        $otpDebug = ServicioWhatsApp::configurado() ? null : $codigo;
+        // Enviar OTP: email (si hay correo y SMTP configurado) → WhatsApp (si configurado) → debug (pantalla)
+        $otpDebug = null;
+        $enviado = false;
+        if ($correo !== '' && ServicioCorreo::configurado()) {
+            $enviado = (new ServicioCorreo())->enviarOtp($correo, 'Paciente', $codigo);
+        } elseif (ServicioWhatsApp::configurado()) {
+            $enviado = ServicioWhatsApp::enviarOtp($telefono, $codigo);
+        } else {
+            $enviado = true;
+            $otpDebug = $codigo; // modo debug: mostrar en pantalla
+        }
         $_SESSION['pre_registro_paciente_id'] = $personaId;
         $_SESSION['pre_registro_telefono'] = $telefono;
+        $_SESSION['pre_registro_correo'] = $correo;
         $this->vista('Seguridad/IUVerificarOtp', ['telefono' => $telefono, 'otpDebug' => $otpDebug,
             'error' => $enviado ? null : 'No se pudo enviar el código. Intente nuevamente.'], 'publica');
     }
@@ -161,8 +170,17 @@ final class ControlIniciarSesion extends ControlBase
         $telefono = (string) ($_SESSION['pre_registro_telefono'] ?? '');
         $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         (new OtpVerificacion())->crear($pacienteId, $telefono, $codigo, 5);
-        $enviado = ServicioWhatsApp::enviarOtp($telefono, $codigo);
-        $otpDebug = ServicioWhatsApp::configurado() ? null : $codigo;
+        $correo = (string) ($_SESSION['pre_registro_correo'] ?? '');
+        $enviado = false;
+        $otpDebug = null;
+        if ($correo !== '' && ServicioCorreo::configurado()) {
+            $enviado = (new ServicioCorreo())->enviarOtp($correo, 'Paciente', $codigo);
+        } elseif (ServicioWhatsApp::configurado()) {
+            $enviado = ServicioWhatsApp::enviarOtp($telefono, $codigo);
+        } else {
+            $enviado = true;
+            $otpDebug = $codigo;
+        }
         $this->vista('Seguridad/IUVerificarOtp', ['telefono' => $telefono, 'otpDebug' => $otpDebug,
             'error' => $enviado ? null : 'No se pudo enviar el código.'], 'publica');
     }

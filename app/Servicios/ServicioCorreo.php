@@ -44,8 +44,16 @@ final class ServicioCorreo
         return $this->enviar($correo, $asunto . ' - Clínica Vida Salud', $html);
     }
 
-    public function enviar(string $para, string $asunto, string $html): bool
+    /** CU05: código OTP para pre-registro de paciente. */
+    public function enviarOtp(string $correo, string $nombre, string $codigo): bool
     {
+        $html = '<div style="font-family:Arial,sans-serif;color:#3b2f2a;max-width:520px">'
+              . '<h2 style="color:#b5573a">Clínica Vida Salud</h2>'
+              . '<p>Hola ' . htmlspecialchars($nombre) . ',</p>'
+              . '<p>Su código de verificación es: <strong style="font-size:24px;letter-spacing:4px">' . htmlspecialchars($codigo) . '</strong></p>'
+              . '<p>El código vence en 5 minutos. Si usted no lo solicitó, ignore este mensaje.</p></div>';
+        return $this->enviar($correo, 'Código de verificación - Clínica Vida Salud', $html);
+    }
         if (!self::configurado()) {
             return false;
         }
