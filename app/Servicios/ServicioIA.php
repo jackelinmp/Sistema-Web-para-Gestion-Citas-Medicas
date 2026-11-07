@@ -74,4 +74,3 @@ final class ServicioIA
         return is_string($texto) && trim($texto) !== '' ? trim($texto) : null;
     }
 }
-" path="C:\Users\prueb\Documents\Sistema-Web-para-Gestion-Citas-Medicas\app\Servicios\ServicioIA.php"
