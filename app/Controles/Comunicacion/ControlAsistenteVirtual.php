@@ -4,6 +4,7 @@ namespace App\Controles\Comunicacion;
 use App\Entidades\Cita;
 use App\Entidades\Conversacion;
 use App\Entidades\PreguntaFrecuente;
+use App\Nucleo\Config;
 use App\Nucleo\ControlBase;
 use App\Nucleo\Sesion;
 
@@ -27,7 +28,7 @@ final class ControlAsistenteVirtual extends ControlBase
         ]);
     }
 
-    /** Recibe el texto del usuario, responde por reglas y vuelve al chat. */
+    /** Recibe el texto del usuario, responde por reglas (o por n8n si está configurado) y vuelve al chat. */
     public function enviarMensaje(): void
     {
         $convId = (string) ($_POST['conversacion_id'] ?? '');
@@ -79,6 +80,15 @@ final class ControlAsistenteVirtual extends ControlBase
      */
     private function responder(string $texto, string $convId): array
     {
+        // Si n8n está configurado, delegar la respuesta al flujo externo (opcional, sin costo si es self-hosted).
+        $n8n = (string) Config::obtener('N8N_WEBHOOK_URL');
+        if ($n8n !== '') {
+            $resp = $this->consultarN8n($n8n, $texto, $convId);
+            if ($resp !== null) {
+                return $resp;
+            }
+        }
+
         $faq = (new PreguntaFrecuente())->buscarRespuesta($texto);
         if ($faq) {
             return ['FAQ_' . $faq['id'], (string) $faq['respuesta']];
@@ -112,5 +122,30 @@ final class ControlAsistenteVirtual extends ControlBase
         }
 
         return ['SIN_RESPUESTA', 'No tengo una respuesta para esa consulta. Se la paso al personal para que la revise.'];
+    }
+
+    /** Delega la respuesta a un flujo n8n (opcional). Devuelve null si falla para usar las reglas locales. */
+    private function consultarN8n(string $url, string $texto, string $convId): ?array
+    {
+        $usuario = Sesion::usuario();
+        $payload = json_encode(['mensaje' => $texto, 'conversacion_id' => $convId,
+                                'usuario_id' => $usuario['id'] ?? null, 'rol' => $usuario['rol'] ?? 'VISITANTE']);
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\r\n",
+                'content' => $payload,
+                'timeout' => 8,
+            ],
+        ]);
+        $resp = @file_get_contents($url, false, $ctx);
+        if ($resp === false) {
+            return null;
+        }
+        $data = json_decode($resp, true);
+        if (!is_array($data) || empty($data['respuesta'])) {
+            return null;
+        }
+        return [$data['intencion'] ?? 'N8N', (string) $data['respuesta']];
     }
 }
