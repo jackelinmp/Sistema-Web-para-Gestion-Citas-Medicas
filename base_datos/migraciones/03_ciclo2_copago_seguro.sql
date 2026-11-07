@@ -18,4 +18,3 @@ ALTER TABLE pago ADD COLUMN IF NOT EXISTS copago_referencia VARCHAR(100);
 ALTER TABLE pago ADD COLUMN IF NOT EXISTS copago_fecha TIMESTAMPTZ;
 
 COMMIT;
-" path="C:\Users\prueb\Documents\Sistema-Web-para-Gestion-Citas-Medicas\base_datos\migraciones\03_ciclo2_copago_seguro.sql"
