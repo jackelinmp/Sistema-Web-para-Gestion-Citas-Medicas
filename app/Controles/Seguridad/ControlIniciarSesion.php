@@ -15,6 +15,7 @@ use App\Nucleo\Conexion;
 use App\Nucleo\ControlBase;
 use App\Nucleo\Sesion;
 use App\Servicios\ServicioCorreo;
+use App\Servicios\ServicioWhatsApp;
 
 /**
  * «control» ControlIniciarSesion — CU01 Iniciar Sesión.
@@ -33,6 +34,137 @@ final class ControlIniciarSesion extends ControlBase
             $this->redirigir('panel');
         }
         $this->vista('Seguridad/IUIniciarSesion', ['correo' => ''], 'publica');
+    }
+
+    /** Pre-registro de paciente externo: CI + fecha de nacimiento + teléfono. Crea paciente PRE_REGISTRADO y envía OTP. */
+    public function mostrarPreRegistro(): void
+    {
+        if (Sesion::usuario()) {
+            $this->redirigir('panel');
+        }
+        $this->vista('Seguridad/IUPreRegistroPaciente', ['d' => [], 'errores' => [], 'otpDebug' => null], 'publica');
+    }
+
+    public function preRegistrar(): void
+    {
+        if (Sesion::usuario()) {
+            $this->redirigir('panel');
+        }
+        $ci = $this->texto('ci');
+        $fechaNac = $this->texto('fecha_nacimiento');
+        $telefono = $this->texto('telefono');
+        $correo = strtolower($this->texto('correo'));
+        $errores = [];
+        if ($ci === '') $errores['ci'] = 'Ingrese su número de carnet.';
+        if ($fechaNac === '') $errores['fecha_nacimiento'] = 'Ingrese su fecha de nacimiento.';
+        if ($telefono === '') $errores['telefono'] = 'Ingrese su número de celular.';
+        if ($errores) {
+            $this->vista('Seguridad/IUPreRegistroPaciente', ['d' => compact('ci','fechaNac','telefono','correo'), 'errores' => $errores, 'otpDebug' => null], 'publica');
+            return;
+        }
+        // Buscar si ya existe la persona
+        $persona = (new Persona())->buscarPorCi($ci);
+        if ($persona && (new Usuario())->existeCorreo($correo !== '' ? $correo : 'x@x.com') === false && $persona['usuario_id']) {
+            // Ya tiene cuenta: enviar a login
+            Sesion::flash('info', 'Ya tiene una cuenta registrada. Inicie sesión.');
+            $this->redirigir('sesion/formulario');
+            return;
+        }
+        $personaId = $persona ? (int) $persona['id'] : null;
+        if (!$personaId) {
+            $personaId = (new Persona())->insertar(['ci' => $ci, 'nombres' => 'Paciente', 'apellidos' => 'Nuevo',
+                'fecha_nacimiento' => $fechaNac, 'sexo' => 'M', 'telefono' => $telefono, 'direccion' => null]);
+        }
+        // Crear paciente pre-registrado si no existe
+        $paciente = (new Paciente())->obtenerPorId($personaId);
+        if (!$paciente) {
+            (new Paciente())->insertar($personaId, ['contacto_emergencia_nombre' => '', 'contacto_emergencia_parentesco' => '',
+                'contacto_emergencia_telefono' => '', 'aseguradora_id' => null, 'nro_poliza' => null]);
+            (new FichaClinica())->crearFichaVacia($personaId);
+            // marcar como pre-registrado
+            Conexion::obtener()->prepare("UPDATE paciente SET estado = 'PRE_REGISTRADO', fecha_pre_registro = now() WHERE persona_id = :id")
+                ->execute(['id' => $personaId]);
+        }
+        // Generar OTP
+        $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        (new OtpVerificacion())->crear($personaId, $telefono, $codigo, 5);
+        // Enviar por WhatsApp (o debug)
+        $enviado = ServicioWhatsApp::enviarOtp($telefono, $codigo);
+        $otpDebug = ServicioWhatsApp::configurado() ? null : $codigo;
+        $_SESSION['pre_registro_paciente_id'] = $personaId;
+        $_SESSION['pre_registro_telefono'] = $telefono;
+        $this->vista('Seguridad/IUVerificarOtp', ['telefono' => $telefono, 'otpDebug' => $otpDebug,
+            'error' => $enviado ? null : 'No se pudo enviar el código. Intente nuevamente.'], 'publica');
+    }
+
+    public function mostrarVerificarOtp(): void
+    {
+        if (empty($_SESSION['pre_registro_paciente_id'])) {
+            $this->redirigir('sesion/pre-registro');
+        }
+        $this->vista('Seguridad/IUVerificarOtp', ['telefono' => $_SESSION['pre_registro_telefono'] ?? '', 'otpDebug' => null, 'error' => null], 'publica');
+    }
+
+    public function verificarOtp(): void
+    {
+        $pacienteId = (int) ($_SESSION['pre_registro_paciente_id'] ?? 0);
+        if (!$pacienteId) {
+            $this->redirigir('sesion/pre-registro');
+        }
+        $codigo = trim((string) ($_POST['codigo'] ?? ''));
+        $otp = (new OtpVerificacion())->ultimo($pacienteId);
+        if (!$otp || $otp['verificado']) {
+            Sesion::flash('error', 'Solicite un nuevo código.');
+            $this->redirigir('sesion/pre-registro');
+            return;
+        }
+        if (strtotime($otp['fecha_expiracion']) < time()) {
+            Sesion::flash('error', 'El código expiró. Solicite uno nuevo.');
+            $this->redirigir('sesion/pre-registro');
+            return;
+        }
+        if ((int) $otp['intentos'] >= 5) {
+            Sesion::flash('error', 'Demasiados intentos. Solicite un nuevo código.');
+            $this->redirigir('sesion/pre-registro');
+            return;
+        }
+        (new OtpVerificacion())->sumarIntento((int) $otp['id']);
+        if ($codigo !== $otp['codigo']) {
+            Sesion::flash('error', 'Código incorrecto.');
+            $this->vista('Seguridad/IUVerificarOtp', ['telefono' => $otp['telefono'], 'otpDebug' => null, 'error' => 'Código incorrecto.'], 'publica');
+            return;
+        }
+        (new OtpVerificacion())->marcarVerificado((int) $otp['id']);
+        // marcar teléfono verificado y crear cuenta si hay correo
+        Conexion::obtener()->prepare('UPDATE paciente SET telefono_verificado = TRUE WHERE persona_id = :id')
+            ->execute(['id' => $pacienteId]);
+        $correo = strtolower(trim((string) ($_POST['correo'] ?? '')));
+        if ($correo !== '' && filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            $existe = (new Usuario())->existeCorreo($correo);
+            if (!$existe) {
+                (new Usuario())->insertar($pacienteId, (new Rol())->obtenerIdPorNombre('PACIENTE'), $correo, $otp['codigo'], false);
+            }
+        }
+        // Activar paciente
+        (new Paciente())->cambiarEstado($pacienteId, 'ACTIVO');
+        unset($_SESSION['pre_registro_paciente_id'], $_SESSION['pre_registro_telefono']);
+        Sesion::flash('ok', 'Teléfono verificado. Ya puede iniciar sesión.');
+        $this->redirigir('sesion/formulario');
+    }
+
+    public function reenviarOtp(): void
+    {
+        $pacienteId = (int) ($_SESSION['pre_registro_paciente_id'] ?? 0);
+        if (!$pacienteId) {
+            $this->redirigir('sesion/pre-registro');
+        }
+        $telefono = (string) ($_SESSION['pre_registro_telefono'] ?? '');
+        $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        (new OtpVerificacion())->crear($pacienteId, $telefono, $codigo, 5);
+        $enviado = ServicioWhatsApp::enviarOtp($telefono, $codigo);
+        $otpDebug = ServicioWhatsApp::configurado() ? null : $codigo;
+        $this->vista('Seguridad/IUVerificarOtp', ['telefono' => $telefono, 'otpDebug' => $otpDebug,
+            'error' => $enviado ? null : 'No se pudo enviar el código.'], 'publica');
     }
 
     public function iniciarSesion(): void
