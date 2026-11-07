@@ -89,6 +89,101 @@ final class ControlIniciarSesion extends ControlBase
         $this->redirigir('sesion/formulario');
     }
 
+    public function mostrarRegistro(): void
+    {
+        if (Sesion::usuario()) {
+            $this->redirigir('panel');
+        }
+        $this->vista('Seguridad/IURegistroPaciente', ['d' => [], 'errores' => []], 'publica');
+    }
+
+    /**
+     * El paciente que nunca vino a la cl+¡nica crea su expediente y su cuenta, y sigue directo a agendar.
+     * Reglas: mayor de 18 a+¦os (a los menores los registra su responsable en recepci+¦n); si su CI ya
+     * existe no se crea otra persona: se le indica iniciar sesi+¦n o pasar por recepci+¦n.
+     */
+    public function registrarPaciente(): void
+    {
+        if (Sesion::usuario()) {
+            $this->redirigir('panel');
+        }
+        $d = [];
+        foreach (array_merge(Persona::CAMPOS, Paciente::CAMPOS) as $c) {
+            $d[$c] = $this->texto($c);
+        }
+        $d['telefono'] = $d['telefono'] ?: null;
+        $d['direccion'] = $d['direccion'] ?: null;
+        $d['aseguradora_id'] = null;
+        $d['nro_poliza'] = null;
+        $d['correo'] = strtolower($this->texto('correo'));
+        $contrasena = (string) ($_POST['contrasena'] ?? '');
+        $errores = $this->validarRegistro($d, $contrasena, (string) ($_POST['confirmacion'] ?? ''));
+        if ($errores) {
+            $this->vista('Seguridad/IURegistroPaciente', ['d' => $d, 'errores' => $errores], 'publica');
+            return;
+        }
+        $expediente = Conexion::transaccion(function () use ($d, $contrasena) {
+            $id = (new Persona())->insertar($d);
+            $expediente = (new Paciente())->insertar($id, $d);
+            (new FichaClinica())->crearFichaVacia($id);
+            $usuarioId = (new Usuario())->insertar($id, (new Rol())->obtenerIdPorNombre('PACIENTE'), $d['correo'], $contrasena, false);
+            (new Bitacora())->registrarEvento($usuarioId, 'REGISTRO_EN_LINEA',
+                'Paciente nuevo ' . $expediente . ' se registr+¦ desde el portal', $this->ip(), 'paciente', $id);
+            return $expediente;
+        });
+        $cuenta = (new Usuario())->buscarPorCorreo($d['correo']);
+        (new Usuario())->registrarAcceso((int) $cuenta['id']);
+        unset($cuenta['contrasena_hash'], $cuenta['debe_cambiar_contrasena'], $cuenta['intentos_fallidos'], $cuenta['bloqueado_hasta']);
+        Sesion::abrir($cuenta);
+        Sesion::flash('ok', 'Bienvenido(a). Su expediente es ' . $expediente . '. Ya puede agendar su primera cita.');
+        $this->irAPaginaPedida('citas/nueva');
+    }
+
+    private function validarRegistro(array $d, string $contrasena, string $confirmacion): array
+    {
+        $e = [];
+        $obligatorios = ['ci' => 'su documento', 'nombres' => 'sus nombres', 'apellidos' => 'sus apellidos',
+                         'fecha_nacimiento' => 'su fecha de nacimiento', 'telefono' => 'su tel+¬fono', 'correo' => 'su correo',
+                         'contacto_emergencia_nombre' => 'el contacto de emergencia',
+                         'contacto_emergencia_parentesco' => 'el parentesco', 'contacto_emergencia_telefono' => 'el tel+¬fono de emergencia'];
+        foreach ($obligatorios as $c => $t) {
+            if ((string) $d[$c] === '') {
+                $e[$c] = 'Complete ' . $t . '.';
+            }
+        }
+        if (!in_array($d['sexo'], ['F', 'M'], true)) {
+            $e['sexo'] = 'Seleccione el sexo.';
+        }
+        $nacimiento = \DateTime::createFromFormat('Y-m-d', $d['fecha_nacimiento']);
+        if ($d['fecha_nacimiento'] !== '' && (!$nacimiento || $d['fecha_nacimiento'] <= '1900-01-01' || $d['fecha_nacimiento'] > date('Y-m-d'))) {
+            $e['fecha_nacimiento'] = 'La fecha de nacimiento no es v+ílida.';
+        } elseif ($nacimiento && $nacimiento->diff(new \DateTime('today'))->y < 18) {
+            $e['fecha_nacimiento'] = 'Los menores de edad se registran con su padre, madre o tutor en recepci+¦n.';
+        }
+        if ($d['ci'] !== '' && ($persona = (new Persona())->buscarPorCi($d['ci']))) {
+            $e['ci'] = $persona['usuario_id']
+                ? 'Ya existe una cuenta con ese documento. Inicie sesi+¦n o use -½-+Olvid+¦ su contrase+¦a?-+.'
+                : 'Usted ya est+í registrado en la cl+¡nica. Ac+¬rquese o llame a recepci+¦n para que registren su correo y le habiliten el acceso.';
+        }
+        if ($d['correo'] !== '' && !filter_var($d['correo'], FILTER_VALIDATE_EMAIL)) {
+            $e['correo'] = 'Ingrese un correo v+ílido.';
+        } elseif ($d['correo'] !== '' && (new Usuario())->existeCorreo($d['correo'])) {
+            $e['correo'] = 'Ese correo ya est+í asociado a otra cuenta.';
+        }
+        if ($error = self::validarContrasena($contrasena, $confirmacion)) {
+            $e['contrasena'] = $error;
+        }
+        return $e;
+    }
+
+    /** CU01: aviso de cuenta bloqueada con los minutos restantes; el bot+¦n -½Ingresar-+ queda deshabilitado. */
+    private function mostrarBloqueo(string $correo, int $minutos): void
+    {
+        Sesion::flash('aviso', 'Cuenta bloqueada temporalmente por intentos fallidos. Intente nuevamente en '
+            . $minutos . ($minutos === 1 ? ' minuto' : ' minutos') . ' o recupere su contrase+¦a.');
+        $this->vista('Seguridad/IUIniciarSesion', ['correo' => $correo, 'bloqueado' => true], 'publica');
+    }
+
     public function cerrarSesion(): void
     {
         if ($id = $this->idUsuario()) {
