@@ -48,7 +48,7 @@ final class ControlGestionarNotificaciones extends ControlBase
     /** El personal dispara el envío de recordatorios del día siguiente. */
     public function enviarRecordatorios(): void
     {
-        Sesion::exigirPermiso(self::MODULO, 'C');
+        Sesion::exigirPermiso(self::MODULO, 'M');
         $this->exigirRol(self::ROLES_STAFF);
         $enviados = $this->generarRecordatorios(date('Y-m-d', strtotime('+1 day')));
         Sesion::flash('ok', "Se generaron $enviados recordatorio(s) para las citas de mañana.");
@@ -58,6 +58,12 @@ final class ControlGestionarNotificaciones extends ControlBase
     /** Tarea diaria sin sesión: genera recordatorios y envía los correos pendientes. */
     public function ejecutarTareaProgramada(): void
     {
+        // Sin clave cualquiera podía disparar correos masivos desde Internet.
+        $clave = (string) \App\Nucleo\Config::obtener('CRON_CLAVE');
+        if ($clave === '' || !hash_equals($clave, (string) ($_GET['clave'] ?? ''))) {
+            http_response_code(403);
+            exit('Clave incorrecta.');
+        }
         $manana = date('Y-m-d', strtotime('+1 day'));
         $generados = $this->generarRecordatorios($manana);
         $enviados = $this->enviarPendientes();
@@ -102,11 +108,25 @@ final class ControlGestionarNotificaciones extends ControlBase
     public function notificarCita(int $citaId, string $tipo, string $asunto, string $mensaje): void
     {
         $bd = Conexion::obtener();
-        $st = $bd->prepare('SELECT u.id FROM usuario u JOIN cita c ON c.paciente_id = u.persona_id WHERE c.id = :c');
+        // Destinatario: la cuenta del paciente o, si es un menor sin cuenta, la de su tutor (CU22).
+        $st = $bd->prepare("SELECT COALESCE(u.id, ut.id)
+                              FROM cita c
+                              JOIN persona pp ON pp.id = c.paciente_id
+                              LEFT JOIN usuario u  ON u.persona_id = c.paciente_id AND u.estado = 'HABILITADA'
+                              LEFT JOIN usuario ut ON ut.persona_id = pp.tutor_id AND ut.estado = 'HABILITADA'
+                             WHERE c.id = :c");
         $st->execute(['c' => $citaId]);
         $uid = $st->fetchColumn();
-        if ($uid) {
-            (new Notificacion())->registrar((int) $uid, $citaId, $tipo, $asunto, $mensaje);
+        if (!in_array($tipo, ['RECORDATORIO', 'CONFIRMACION', 'CANCELACION', 'SISTEMA'], true)) {
+            $tipo = 'SISTEMA';   // notificacion_tipo_check solo admite estos cuatro
+        }
+        try {
+            if ($uid) {
+                (new Notificacion())->registrar((int) $uid, $citaId, $tipo, $asunto, $mensaje);
+            }
+            $this->enviarPendientes();
+        } catch (\Throwable $e) {
+            error_log('CU24 notificarCita: ' . $e->getMessage());   // un aviso nunca debe romper el caso de uso que lo llama
         }
     }
 

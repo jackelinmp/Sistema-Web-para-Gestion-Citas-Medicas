@@ -44,8 +44,7 @@ return [
     'sesion/existente'           => [ControlIniciarSesion::class, 'mostrarVerificarExistente', 'GET'],
     'sesion/existente/verificar' => [ControlIniciarSesion::class, 'verificarExistente', 'POST'],
     'sesion/existente/ingresar'  => [ControlIniciarSesion::class, 'ingresarExistente', 'POST'],
-    'sesion/pre-registro'        => [ControlIniciarSesion::class, 'mostrarPreRegistro', 'GET'],
-    'sesion/pre-registro/guardar' => [ControlIniciarSesion::class, 'preRegistrar', 'POST'],
+    'sesion/pre-registro'        => [ControlIniciarSesion::class, 'mostrarRegistro', 'GET'],   // el pre-registro se retiró (migración 06): lleva al registro
     'panel'                      => [ControlIniciarSesion::class, 'mostrarPanel', 'GET'],
     'sesion/recuperar'           => [ControlIniciarSesion::class, 'mostrarRecuperacion', 'GET'],
     'sesion/recuperar/enviar'    => [ControlIniciarSesion::class, 'solicitarRecuperacion', 'POST'],

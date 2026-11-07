@@ -33,13 +33,9 @@ final class ServicioIA
         $system = "Eres el asistente virtual oficial de la Clínica Vida Salud. Responde en español, de forma breve y amable. "
                 . "Solo puedes ayudar con: horarios de atención, citas médicas, reprogramación/cancelación, "
                 . "pagos, especialidades y dudas generales de la clínica. Si no sabes algo, di que lo pasas al personal. "
-                . "No inventes datos médicos. Información oficial de la clínica: "
-                . "Horario general de atención: Lunes a Viernes de 07:00 a 19:00. "
-                . "Especialidad Dermatología: atiende Lunes, Miércoles y Viernes de 08:00 a 12:00. "
-                . "Especialidad Pediatría: atiende Martes y Jueves de 14:00 a 18:00. "
-                . "Especialidad Medicina General: atiende de Lunes a Viernes de 07:00 a 19:00. "
-                . "Reservas de citas: se realizan en el módulo Reservas del panel del paciente. "
-                . "Cancelaciones: se pueden cancelar citas hasta 24 horas antes desde Mis Citas. "
+                . "No inventes datos médicos, horarios, precios ni nombres: usa SOLO la base de conocimiento de abajo. "
+                . "Para horarios libres de un médico o especialidad indica la pantalla «Disponibilidad horaria»; "
+                . "para reservar, «Agendar cita»; para cancelar o reprogramar (hasta 24 horas antes), «Mis citas». "
                 . "Contexto de la base de conocimiento:\n";
         foreach ($faqContexto as $f) {
             $system .= "- P: {$f['pregunta']}\n  R: {$f['respuesta']}\n";

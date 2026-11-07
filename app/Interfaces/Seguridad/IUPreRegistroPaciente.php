@@ -15,4 +15,3 @@
   <button class="btn">Enviar pre-registro</button>
   <a class="btn secundario" href="?r=sesion/formulario">Ya tengo cuenta</a>
 </form>
-" path="C:\Users\prueb\Documents\Sistema-Web-para-Gestion-Citas-Medicas\app\Interfaces\Seguridad\IUPreRegistroPaciente.php"

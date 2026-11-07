@@ -1,6 +1,8 @@
 <?php
 namespace App\Controles\Citas;
 
+use App\Controles\Comunicacion\ControlGestionarNotificaciones;
+
 use App\Controles\Pacientes\ControlValidarRestricciones;
 use App\Entidades\Bitacora;
 use App\Entidades\Cita;
@@ -119,6 +121,9 @@ final class ControlAgendarCita extends ControlBase
             Sesion::flash('error', $this->mensajeBaseDatos($e));
             $this->redirigir($volver);
         }
+        (new ControlGestionarNotificaciones())->notificarCita((int) $cita['id'], 'CONFIRMACION', 'Cita registrada',
+            'Registramos su cita ' . $cita['codigo'] . ' del ' . date('d/m/Y', strtotime($p['fecha'])) . ' a las '
+            . substr((string) $p['hora_inicio'], 0, 5) . '. Complete el pago para confirmarla.');
         Sesion::flash('ok', 'Cita ' . $cita['codigo'] . ' registrada en estado Programada. Complete el pago para confirmar la reserva.');
         $this->redirigir('pagos/detalle&cita_id=' . (int) $cita['id']);
     }
@@ -160,7 +165,7 @@ final class ControlAgendarCita extends ControlBase
     }
 
     /** Traduce los rechazos de la base (EXCLUDE y triggers) a los mensajes del CU. */
-    private function mensajeBaseDatos(\PDOException $e): string
+    protected function mensajeBaseDatos(\PDOException $e): string
     {
         $m = $e->getMessage();
         if (str_contains($m, 'ex_cita_paciente')) {

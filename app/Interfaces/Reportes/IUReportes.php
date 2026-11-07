@@ -26,6 +26,13 @@ $total = array_sum(array_column($filas, 'total'));
   <label>Desde<input type="date" name="desde" value="<?= e($filtros['desde']) ?>" required></label>
   <label>Hasta<input type="date" name="hasta" value="<?= e($filtros['hasta']) ?>" required></label>
   <button class="btn secundario">Generar</button>
+  <span class="periodos-rapidos">
+    <?php $lunes = date('Y-m-d', strtotime('monday this week'));
+    foreach (['Hoy' => [date('Y-m-d'), date('Y-m-d')], 'Esta semana' => [$lunes, date('Y-m-d', strtotime($lunes . ' +6 day'))],
+              'Este mes' => [date('Y-m-01'), date('Y-m-t')]] as $titulo => [$d, $h]): ?>
+      <a class="btn pequeno secundario" href="?<?= e(http_build_query(['r' => 'reportes', 'tipo' => $filtros['tipo'], 'desde' => $d, 'hasta' => $h])) ?>"><?= $titulo ?></a>
+    <?php endforeach; ?>
+  </span>
 </form>
 
 <?php if ($error): ?>
@@ -60,6 +67,18 @@ $total = array_sum(array_column($filas, 'total'));
     <?php endforeach; ?>
     <?php if ($filas): ?><tr><td colspan="3"><strong>Total del periodo</strong></td><td class="num sin-salto"><strong><?= bs($total) ?></strong></td></tr><?php endif; ?>
     </tbody>
+  <?php elseif ($filtros['tipo'] === 'carga'): ?>
+    <thead><tr><th>Médico</th><th>Especialidades</th><th class="num">Horas de jornada</th><th class="num">Citas</th>
+      <th class="num">Horas ocupadas</th><th class="num">% ocupación</th><th class="num">Días ausente</th></tr></thead>
+    <tbody>
+    <?php foreach ($filas as $f): ?>
+      <tr><td><?= e($f['medico']) ?></td><td><small><?= e($f['especialidades'] ?? '') ?></small></td>
+        <td class="num"><?= e($f['horas_jornada']) ?></td><td class="num"><?= (int) $f['citas'] ?></td>
+        <td class="num"><?= e($f['horas_citas']) ?></td>
+        <td class="num"><?= $f['pct_ocupacion'] === null ? '—' : e($f['pct_ocupacion']) . ' %' ?></td>
+        <td class="num"><?= (int) $f['dias_ausente'] ?></td></tr>
+    <?php endforeach; ?>
+    </tbody>
   <?php else: ?>
     <thead><tr><th>Especialidad</th><th class="num">Citas que debían ocurrir</th><th class="num">Inasistencias</th><th class="num">% inasistencia</th></tr></thead>
     <tbody>
@@ -71,6 +90,10 @@ $total = array_sum(array_column($filas, 'total'));
   <?php endif; ?>
   <?php if (!$filas): ?><tbody><tr><td colspan="7" class="vacio">No hay datos en el periodo elegido.</td></tr></tbody><?php endif; ?>
   </table></div>
+  <?php if ($filtros['tipo'] === 'carga'): ?>
+    <p class="suave">Horas de jornada = horas que su horario semanal (CU11) le asigna en el periodo. Ocupación = horas de citas no canceladas ÷ horas de jornada.
+      Días ausente = días de atención cubiertos por un bloqueo de agenda (CU12: vacaciones, permiso, reunión).</p>
+  <?php endif; ?>
   <?php if ($filtros['tipo'] === 'productividad'): ?>
     <p class="suave">% inasistencia = inasistencias ÷ (atendidas + inasistencias). Ingresos = pagos cobrados de esas citas (sin reembolsos).</p>
   <?php endif; ?>

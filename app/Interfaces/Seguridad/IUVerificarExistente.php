@@ -45,4 +45,3 @@
     </form>
   <?php endif; ?>
 <?php endif; ?>
-" path="C:\Users\prueb\Documents\Sistema-Web-para-Gestion-Citas-Medicas\app\Interfaces\Seguridad\IUVerificarExistente.php"

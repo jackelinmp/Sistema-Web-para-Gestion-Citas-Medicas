@@ -36,4 +36,3 @@
   <?php endif; ?>
   </tbody>
 </table>
-" path="C:\Users\prueb\Documents\Sistema-Web-para-Gestion-Citas-Medicas\app\Interfaces\Pacientes\IUPreRegistrados.php"

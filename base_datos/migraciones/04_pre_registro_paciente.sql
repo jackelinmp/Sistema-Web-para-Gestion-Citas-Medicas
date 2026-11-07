@@ -23,4 +23,4 @@ ALTER TABLE paciente ADD COLUMN IF NOT EXISTS fecha_pre_registro TIMESTAMPTZ;
 ALTER TABLE paciente ADD COLUMN IF NOT EXISTS validado_por BIGINT REFERENCES usuario(id);
 
 COMMIT;
-" path="C:\Users\prueb\Documents\Sistema-Web-para-Gestion-Citas-Medicas\base_datos\migraciones\04_pre_registro_paciente.sql"
+
