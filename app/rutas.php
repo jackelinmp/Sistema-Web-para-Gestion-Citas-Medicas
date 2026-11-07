@@ -57,6 +57,8 @@ return [
     'pacientes/formulario'       => [ControlGestionarPacientes::class, 'mostrarFormulario', 'GET'],
     'pacientes/guardar'          => [ControlGestionarPacientes::class, 'guardarPaciente', 'POST'],
     'pacientes/estado'           => [ControlGestionarPacientes::class, 'cambiarEstado', 'POST'],
+    'pacientes/pre-registrados'  => [ControlGestionarPacientes::class, 'listarPreRegistrados', 'GET'],
+    'pacientes/activar'          => [ControlGestionarPacientes::class, 'activarPaciente', 'POST'],
     // CU09 Gestionar Médicos
     'medicos'                    => [ControlGestionarMedicos::class, 'listarMedicos', 'GET'],
     'medicos/formulario'         => [ControlGestionarMedicos::class, 'mostrarFormulario', 'GET'],
