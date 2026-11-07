@@ -54,6 +54,9 @@ final class ServicioCorreo
               . '<p>El código vence en 5 minutos. Si usted no lo solicitó, ignore este mensaje.</p></div>';
         return $this->enviar($correo, 'Código de verificación - Clínica Vida Salud', $html);
     }
+
+    public function enviar(string $para, string $asunto, string $html): bool
+    {
         if (!self::configurado()) {
             return false;
         }

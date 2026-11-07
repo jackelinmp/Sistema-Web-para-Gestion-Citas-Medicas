@@ -25,7 +25,7 @@
 </form>
 <div class="alerta info">
   <strong>¿Es su primera vez en la clínica?</strong>
-  <a href="?r=sesion/pre-registro">Pre-regístrese con su carnet y WhatsApp</a> (verificación por código),
-  o <a href="?r=sesion/registro">regístrese como paciente nuevo</a>.
+  <a href="?r=sesion/pre-registro">Pre-regístrese (recepción valida su carnet)</a> o
+  <a href="?r=sesion/registro">regístrese como paciente nuevo</a>.
   También puede consultar al <a href="?r=asistente">asistente virtual</a> sin iniciar sesión.
 </div>
