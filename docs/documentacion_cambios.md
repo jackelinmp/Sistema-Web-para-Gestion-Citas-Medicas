@@ -94,7 +94,7 @@ Destinado a: secciones 7 (Implementación) y 8 (Pruebas) del informe.
 - **Interfaz:** `IUAsistente`
 - **Entidades:** Conversacion, PreguntaFrecuente, Cita
 - **Permiso:** COMUNICACION C
-- **Funcionalidad:** chat con conversación persistente (sesión), respuestas por base de conocimiento (CU26) e intenciones simples (mis citas, horarios, cancelar/reprogramar). Registra preguntas sin respuesta. Funciona para visitantes sin sesión. Integración opcional con n8n (`N8N_WEBHOOK_URL`). Comando de voz vía Web Speech API.
+- **Funcionalidad:** chat con conversación persistente (sesión), respuestas por IA (ServicioIA con Groq/OpenAI compatible) con fallback a reglas locales. Base de conocimiento (CU26) como contexto. Registra preguntas sin respuesta. Funciona para visitantes sin sesión. Comando de voz vía Web Speech API.
 
 #### CU26 — Base de conocimiento
 - **Rutas:** `conocimiento`, `conocimiento/formulario`, `conocimiento/guardar`, `conocimiento/estado`
@@ -258,5 +258,7 @@ DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, DB_SSLMODE (igual que local)
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 MAIL_HOST=smtp.gmail.com (para recuperar contraseña y notificaciones)
-N8N_WEBHOOK_URL=https://tu-n8n.com/webhook/clinica (para asistente virtual)
+AI_API_KEY=gsk_... (para asistente virtual con IA; Groq es gratis)
+AI_API_URL=https://api.groq.com/openai/v1
+AI_MODEL=llama-3.1-8b-instant
 ```

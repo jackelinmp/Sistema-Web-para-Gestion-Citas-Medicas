@@ -10,15 +10,15 @@ use App\Servicios\ServicioIA;
 use App\Nucleo\Sesion;
 
 /**
- * Â«controlÂ» ControlAsistenteVirtual â€” CU25 Asistente virtual (reglas, sin API externa).
+ * «control» ControlAsistenteVirtual — CU25 Asistente virtual (reglas, sin API externa).
  * Interfaces: IUAsistente.  Entidades: Conversacion, PreguntaFrecuente, Cita.
- * TambiÃ©n atiende visitantes sin sesiÃ³n. La base de conocimiento es CU26.
+ * También atiende visitantes sin sesión. La base de conocimiento es CU26.
  */
 final class ControlAsistenteVirtual extends ControlBase
 {
     private const MODULO = 'COMUNICACION';
 
-    /** Muestra el chat y conserva (o abre) la conversaciÃ³n en sesiÃ³n. */
+    /** Muestra el chat y conserva (o abre) la conversación en sesión. */
     public function mostrarChat(): void
     {
         $convId = $this->obtenerOCrearConversacion();
@@ -29,7 +29,7 @@ final class ControlAsistenteVirtual extends ControlBase
         ]);
     }
 
-    /** Recibe el texto del usuario, responde por reglas (o por n8n si estÃ¡ configurado) y vuelve al chat. */
+    /** Recibe el texto del usuario, responde por reglas (o por n8n si está configurado) y vuelve al chat. */
     public function enviarMensaje(): void
     {
         $convId = (string) ($_POST['conversacion_id'] ?? '');
@@ -45,7 +45,7 @@ final class ControlAsistenteVirtual extends ControlBase
         $this->redirigir('asistente');
     }
 
-    /** Cierra la conversaciÃ³n activa. */
+    /** Cierra la conversación activa. */
     public function cerrarConversacion(): void
     {
         $convId = (string) ($_POST['conversacion_id'] ?? '');
@@ -56,7 +56,7 @@ final class ControlAsistenteVirtual extends ControlBase
         $this->redirigir('asistente');
     }
 
-    /** Abre una conversaciÃ³n nueva si no hay una activa en la sesiÃ³n. */
+    /** Abre una conversación nueva si no hay una activa en la sesión. */
     private function obtenerOCrearConversacion(): string
     {
         $existente = $_SESSION['chat_conversacion'] ?? null;
@@ -90,17 +90,6 @@ final class ControlAsistenteVirtual extends ControlBase
                 return ['IA', $respuestaIA];
             }
         }
-
-        // 2) n8n (opcional, si esta configurado).
-        // Si n8n estÃ¡ configurado, delegar la respuesta al flujo externo (opcional, sin costo si es self-hosted).
-        $n8n = (string) Config::obtener('N8N_WEBHOOK_URL');
-        if ($n8n !== '') {
-            $resp = $this->consultarN8n($n8n, $texto, $convId);
-            if ($resp !== null) {
-                return $resp;
-            }
-        }
-
         $faq = (new PreguntaFrecuente())->buscarRespuesta($texto);
         if ($faq) {
             return ['FAQ_' . $faq['id'], (string) $faq['respuesta']];
@@ -111,13 +100,13 @@ final class ControlAsistenteVirtual extends ControlBase
 
         if (str_contains($normalizado, 'mis citas') || str_contains($normalizado, 'mis proximas')) {
             if (!$usuario) {
-                return ['SIN_SESION', 'Para ver sus citas debe iniciar sesiÃ³n.'];
+                return ['SIN_SESION', 'Para ver sus citas debe iniciar sesión.'];
             }
             $citas = (new Cita())->listarProximas((int) $usuario['persona_id'], '');
             if (!$citas) {
-                return ['MIS_CITAS', 'No tiene citas prÃ³ximas registradas.'];
+                return ['MIS_CITAS', 'No tiene citas próximas registradas.'];
             }
-            $lineas = ['Sus prÃ³ximas citas:'];
+            $lineas = ['Sus próximas citas:'];
             foreach ($citas as $c) {
                 $lineas[] = '- ' . $c['codigo'] . ' el ' . $c['fecha'] . ' a las ' . substr((string) $c['hora_inicio'], 0, 5)
                           . ' con ' . $c['medico'] . ' (' . $c['especialidad'] . ').';
@@ -126,38 +115,14 @@ final class ControlAsistenteVirtual extends ControlBase
         }
 
         if (str_contains($normalizado, 'horario') || str_contains($normalizado, 'hora de atencion')) {
-            return ['HORARIOS', 'La atenciÃ³n es de lunes a viernes. Consulte la disponibilidad por especialidad en "Disponibilidad horaria" para ver los cupos libres.'];
+            return ['HORARIOS', 'La atención es de lunes a viernes. Consulte la disponibilidad por especialidad en "Disponibilidad horaria" para ver los cupos libres.'];
         }
 
         if (str_contains($normalizado, 'cancelar') || str_contains($normalizado, 'reprogramar')) {
-            return ['CAMBIOS', 'Puede reprogramar o cancelar sus citas desde "Mis citas", con al menos 24 horas de anticipaciÃ³n.'];
+            return ['CAMBIOS', 'Puede reprogramar o cancelar sus citas desde "Mis citas", con al menos 24 horas de anticipación.'];
         }
 
         return ['SIN_RESPUESTA', 'No tengo una respuesta para esa consulta. Se la paso al personal para que la revise.'];
     }
 
-    /** Delega la respuesta a un flujo n8n (opcional). Devuelve null si falla para usar las reglas locales. */
-    private function consultarN8n(string $url, string $texto, string $convId): ?array
-    {
-        $usuario = Sesion::usuario();
-        $payload = json_encode(['mensaje' => $texto, 'conversacion_id' => $convId,
-                                'usuario_id' => $usuario['id'] ?? null, 'rol' => $usuario['rol'] ?? 'VISITANTE']);
-        $ctx = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-Type: application/json\r\n",
-                'content' => $payload,
-                'timeout' => 8,
-            ],
-        ]);
-        $resp = @file_get_contents($url, false, $ctx);
-        if ($resp === false) {
-            return null;
-        }
-        $data = json_decode($resp, true);
-        if (!is_array($data) || empty($data['respuesta'])) {
-            return null;
-        }
-        return [$data['intencion'] ?? 'N8N', (string) $data['respuesta']];
-    }
 }
