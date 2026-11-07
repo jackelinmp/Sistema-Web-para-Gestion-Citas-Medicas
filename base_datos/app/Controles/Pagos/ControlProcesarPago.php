@@ -35,10 +35,12 @@ final class ControlProcesarPago extends ControlBase
         Sesion::exigirPermiso('PAGOS', 'C');
         $pago = $this->pagoAutorizado((int) ($_GET['cita_id'] ?? 0));
         $this->vista('Pagos/IUDetallePago', [
-            'pago' => $pago, 'stripe' => ServicioStripe::configurado(),
-            'puedePagar' => Sesion::puede('PAGOS', 'R') && $pago['pago_estado'] === 'PENDIENTE' && $pago['cita_estado'] === 'PROGRAMADA',
+            'pago'        => $pago,
+            'stripe'      => ServicioStripe::configurado(),
+            'puedePagar'  => $pago['pago_estado'] === 'PENDIENTE' && $pago['cita_estado'] === 'PROGRAMADA',
             'puedeSeguro' => Sesion::puede('PAGOS', 'R') && $this->soloPaciente() === null && $pago['pago_estado'] === 'PENDIENTE'
                              && $pago['cita_estado'] === 'PROGRAMADA' && $pago['aseguradora_id'] !== null,
+            'esPersonal'  => $this->soloPaciente() === null,
         ]);
     }
 
@@ -128,6 +130,38 @@ final class ControlProcesarPago extends ControlBase
         $this->responder(200, 'ok');
     }
 
+    /** Registra un pago manual (efectivo, QR o transferencia) y confirma la cita. */
+    public function registrarPagoManual(): void
+    {
+        Sesion::exigirPermiso('PAGOS', 'R');
+        $citaId = (int) ($_POST['cita_id'] ?? 0);
+        $pago = $this->pagoAutorizado($citaId);
+        if ($this->soloPaciente() !== null) {
+            Sesion::denegar('Pago manual no permitido (cita ' . $citaId . ')');
+        }
+        $this->exigirPendiente($pago);
+        $metodo = (string) ($_POST['metodo'] ?? '');
+        if (!in_array($metodo, ['EFECTIVO', 'QR', 'TRANSFERENCIA'], true)) {
+            Sesion::flash('error', 'Seleccione un método de pago válido.');
+            $this->redirigir('pagos/detalle&cita_id=' . $citaId);
+        }
+        $referencia = trim((string) ($_POST['referencia'] ?? '')) ?: null;
+        $usuario = (int) $this->idUsuario();
+        try {
+            Conexion::transaccion(function () use ($citaId, $usuario, $metodo, $referencia) {
+                $p = new Pago();
+                $p->obtenerPorCita($citaId, true);
+                $p->registrarPago($citaId, $metodo, $usuario, $referencia);
+                $p->confirmarCita($citaId, $usuario);
+            });
+        } catch (\PDOException $e) {
+            Sesion::flash('error', $this->mensajeBaseDatos($e));
+            $this->redirigir('pagos/detalle&cita_id=' . $citaId);
+        }
+        Sesion::flash('ok', 'Pago registrado por ' . $metodo . '. Comprobante generado.');
+        $this->redirigir('pagos/detalle&cita_id=' . $citaId);
+    }
+
     /** Confirma por seguro médico (solo personal): se registra la referencia de la póliza. */
     public function confirmarPorSeguro(): void
     {
@@ -143,14 +177,35 @@ final class ControlProcesarPago extends ControlBase
             Sesion::flash('error', 'Indique la referencia de la póliza del paciente.');
             $this->redirigir('pagos/detalle&cita_id=' . $citaId);
         }
+        $copago = (float) str_replace(',', '.', (string) ($_POST['copago'] ?? '0'));
+        if ($copago < 0 || $copago > (float) $pago['monto']) {
+            Sesion::flash('error', 'El copago no puede ser negativo ni mayor al monto total.');
+            $this->redirigir('pagos/detalle&cita_id=' . $citaId);
+        }
+        $copagoMetodo = (string) ($_POST['copago_metodo'] ?? '');
+        if ($copago > 0 && !in_array($copagoMetodo, ['EFECTIVO', 'QR', 'TRANSFERENCIA', 'TARJETA'], true)) {
+            Sesion::flash('error', 'Seleccione cómo se cobró el copago.');
+            $this->redirigir('pagos/detalle&cita_id=' . $citaId);
+        }
+        $copagoReferencia = trim((string) ($_POST['copago_referencia'] ?? '')) ?: null;
         $usuario = (int) $this->idUsuario();
-        Conexion::transaccion(function () use ($citaId, $usuario, $referencia) {
+        Conexion::transaccion(function () use ($citaId, $usuario, $referencia, $copago, $copagoMetodo, $copagoReferencia) {
             $p = new Pago();
             $p->obtenerPorCita($citaId, true);
             $p->registrarPago($citaId, 'SEGURO', $usuario, mb_substr($referencia, 0, 100));
             $p->confirmarCita($citaId, $usuario);
+            $bd = Conexion::obtener();
+            $bd->prepare("UPDATE pago SET copago = :c, copago_metodo = :m, copago_referencia = :r,
+                                          copago_fecha = CASE WHEN :c2 > 0 THEN now() ELSE NULL END
+                                    WHERE cita_id = :ci")
+               ->execute(['c' => $copago, 'm' => $copago > 0 ? $copagoMetodo : null,
+                          'r' => $copagoReferencia, 'c2' => $copago, 'ci' => $citaId]);
         });
-        Sesion::flash('ok', 'Cita confirmada por seguro médico. Comprobante generado.');
+        $msg = 'Cita confirmada por seguro médico. Comprobante generado.';
+        if ($copago > 0) {
+            $msg .= ' Copago de Bs ' . number_format($copago, 2, ',', '.') . ' registrado.';
+        }
+        Sesion::flash('ok', $msg);
         $this->redirigir('pagos/detalle&cita_id=' . $citaId);
     }
 
@@ -228,8 +283,7 @@ final class ControlProcesarPago extends ControlBase
             Sesion::flash('error', 'La cita indicada no tiene un pago registrado.');
             $this->redirigir('pagos');
         }
-        $propio = $this->soloPaciente();
-        if ($propio !== null && (int) $pago['paciente_id'] !== $propio) {
+        if ($this->soloPaciente() !== null && !$this->esMioOFamiliar((int) $pago['paciente_id'])) {   // suyo o de un familiar (CU22)
             Sesion::denegar('Intento de ver el pago de la cita ' . $citaId . ' de otro paciente');
         }
         return $pago;

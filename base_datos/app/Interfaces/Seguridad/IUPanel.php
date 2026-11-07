@@ -52,21 +52,18 @@ $mostrar = $seleccion === 'todos' ? array_keys($ciclos) : [(int) $seleccion];
     </header>
 
     <?php foreach ($ciclo['paquetes'] as $paquete): ?>
+      <?php $itemsOk = array_filter($paquete['items'], fn($it) => $it['estado'] === 'ok'); if (!$itemsOk) continue; ?>
       <h4 class="paquete-titulo"><?= e($paquete['id']) ?> · <?= e($paquete['titulo']) ?></h4>
       <div class="modulos">
-        <?php foreach ($paquete['items'] as $it): $ok = $it['estado'] === 'ok'; ?>
-          <article class="modulo <?= $ok ? '' : 'bloqueado' ?>">
+        <?php foreach ($itemsOk as $it): $ok = true; ?>
+          <article class="modulo">
             <div class="modulo-cabecera">
               <span class="modulo-icono"><?= icono($it['icono'], 22) ?></span>
               <?= etiquetaCu($it) ?>
             </div>
             <h5><?= e($it['texto']) ?></h5>
             <p><?= e($it['desc']) ?></p>
-            <?php if ($ok): ?>
-              <a class="btn" href="?r=<?= e($it['ruta']) ?>">Ingresar <?= icono('flecha', 16) ?></a>
-            <?php else: ?>
-              <span class="btn-bloqueado" role="note"><?= icono('candado', 15) ?> <?= e(Ciclos::motivo($it['estado'])) ?></span>
-            <?php endif; ?>
+            <a class="btn" href="?r=<?= e($it['ruta']) ?>">Ingresar <?= icono('flecha', 16) ?></a>
           </article>
         <?php endforeach; ?>
       </div>

@@ -67,4 +67,37 @@ final class Pago extends EntidadBase
     {
         $this->bd->prepare("SELECT sp_cambiar_estado_cita(:c, 'CONFIRMADA', :u)")->execute(['c' => $citaId, 'u' => $usuario]);
     }
+
+    /** CU18: ingresos por día y método, solo pagos PAGADO del período. */
+    public function reportarIngresos(string $desde, string $hasta): array
+    {
+        $st = $this->bd->prepare("SELECT to_char(p.fecha_pago, 'YYYY-MM-DD') AS dia, p.metodo,
+                                         count(*) AS pagos, COALESCE(sum(p.monto), 0) AS total
+                                    FROM pago p
+                                   WHERE p.estado = 'PAGADO'
+                                     AND p.fecha_pago IS NOT NULL
+                                     AND p.fecha_pago::date BETWEEN :d AND :h
+                                   GROUP BY to_char(p.fecha_pago, 'YYYY-MM-DD'), p.metodo
+                                   ORDER BY dia, metodo");
+        $st->execute(['d' => $desde, 'h' => $hasta]);
+        return $st->fetchAll();
+    }
+
+    public function listarHistorial(array $f): array
+    {
+        $ids = $f['pacientes'] === null ? null : '{' . implode(',', array_map('intval', $f['pacientes'])) . '}';
+        $like = '%' . $f['criterio'] . '%';
+        $st = $this->bd->prepare(self::DETALLE . "WHERE (CAST(:ids AS bigint[]) IS NULL OR c.paciente_id = ANY (CAST(:ids2 AS bigint[])))
+                                   AND (CAST(:e AS text) = '' OR pg.estado = :e2)
+                                   AND (CAST(:m AS text) = '' OR pg.metodo = :m2)
+                                   AND (CAST(:k AS text) = '' OR pp.nombres || ' ' || pp.apellidos ILIKE :k2 OR c.codigo ILIKE :k3
+                                        OR pa.nro_expediente ILIKE :k4 OR co.nro_correlativo ILIKE :k5)
+                                   AND (CAST(:d AS date) IS NULL OR COALESCE(pg.fecha_pago, pg.fecha_registro)::date >= CAST(:d2 AS date))
+                                   AND (CAST(:h AS date) IS NULL OR COALESCE(pg.fecha_pago, pg.fecha_registro)::date <= CAST(:h2 AS date))
+                                 ORDER BY COALESCE(pg.fecha_pago, pg.fecha_registro) DESC LIMIT 300");
+        $st->execute(['ids' => $ids, 'ids2' => $ids, 'e' => $f['estado'], 'e2' => $f['estado'], 'm' => $f['metodo'], 'm2' => $f['metodo'],
+                      'k' => $f['criterio'], 'k2' => $like, 'k3' => $like, 'k4' => $like, 'k5' => $like,
+                      'd' => $f['desde'] ?: null, 'd2' => $f['desde'] ?: null, 'h' => $f['hasta'] ?: null, 'h2' => $f['hasta'] ?: null]);
+        return $st->fetchAll();
+    }
 }
