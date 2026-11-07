@@ -31,6 +31,7 @@ use App\Controles\Seguridad\ControlGestionarBitacora;
 use App\Controles\Seguridad\ControlGestionarCuentas;
 use App\Controles\Seguridad\ControlGestionarRoles;
 use App\Controles\Seguridad\ControlIniciarSesion;
+use App\Controles\Seguridad\ControlPerfilPaciente;
 
 return [
     // ===================== ERIKA =====================
@@ -38,6 +39,11 @@ return [
     'sesion/formulario'          => [ControlIniciarSesion::class, 'mostrarFormulario', 'GET'],
     'sesion/iniciar'             => [ControlIniciarSesion::class, 'iniciarSesion', 'POST'],
     'sesion/cerrar'              => [ControlIniciarSesion::class, 'cerrarSesion', 'POST'],
+    'perfil'                     => [ControlPerfilPaciente::class, 'mostrarPerfil', 'GET'],
+    'perfil/guardar'             => [ControlPerfilPaciente::class, 'guardarPerfil', 'POST'],
+    'sesion/existente'           => [ControlIniciarSesion::class, 'mostrarVerificarExistente', 'GET'],
+    'sesion/existente/verificar' => [ControlIniciarSesion::class, 'verificarExistente', 'POST'],
+    'sesion/existente/ingresar'  => [ControlIniciarSesion::class, 'ingresarExistente', 'POST'],
     'sesion/pre-registro'        => [ControlIniciarSesion::class, 'mostrarPreRegistro', 'GET'],
     'sesion/pre-registro/guardar' => [ControlIniciarSesion::class, 'preRegistrar', 'POST'],
     'panel'                      => [ControlIniciarSesion::class, 'mostrarPanel', 'GET'],

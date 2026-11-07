@@ -35,6 +35,131 @@ final class ControlIniciarSesion extends ControlBase
         $this->vista('Seguridad/IUIniciarSesion', ['correo' => ''], 'publica');
     }
 
+    /** Puerta A: paciente existente (CI + fecha de nacimiento). */
+    public function mostrarVerificarExistente(): void
+    {
+        if (Sesion::usuario()) {
+            $this->redirigir('panel');
+        }
+        $this->vista('Seguridad/IUVerificarExistente', ['paso' => 1, 'persona' => null, 'error' => null], 'publica');
+    }
+
+    public function verificarExistente(): void
+    {
+        if (Sesion::usuario()) {
+            $this->redirigir('panel');
+        }
+        $ci = $this->texto('ci');
+        $fechaNac = $this->texto('fecha_nacimiento');
+        if ($ci === '' || $fechaNac === '') {
+            $this->vista('Seguridad/IUVerificarExistente', ['paso' => 1, 'persona' => null, 'error' => 'Ingrese su carnet y fecha de nacimiento.'], 'publica');
+            return;
+        }
+        $persona = (new Persona())->buscarPorCi($ci);
+        if (!$persona || $persona['fecha_nacimiento'] !== $fechaNac) {
+            // verificar fecha de nacimiento
+            $st = (new Persona())->obtenerPorId((int) $persona['id']) ?? null;
+            $this->vista('Seguridad/IUVerificarExistente', ['paso' => 1, 'persona' => null,
+                'error' => 'No se encontrÃ³ un registro clÃ­nico con esos datos. Si es su primera vez, regÃ­strese como paciente nuevo.'], 'publica');
+            return;
+        }
+        // verificar fecha nacimiento
+        $personaFull = (new Persona())->obtenerPorId((int) $persona['id']);
+        // Persona no tiene obtenerPorId; buscar por ci de nuevo con fecha
+        $st = Conexion::obtener()->prepare('SELECT p.id, p.ci, p.nombres, p.apellidos, p.fecha_nacimiento, u.id AS usuario_id
+                                            FROM persona p LEFT JOIN usuario u ON u.persona_id = p.id
+                                            WHERE p.ci = :ci AND p.fecha_nacimiento = :fn');
+        $st->execute(['ci' => $ci, 'fn' => $fechaNac]);
+        $persona = $st->fetch() ?: null;
+        if (!$persona) {
+            $this->vista('Seguridad/IUVerificarExistente', ['paso' => 1, 'persona' => null,
+                'error' => 'No se encontrÃ³ un registro clÃ­nico con esos datos. Si es su primera vez, regÃ­strese como paciente nuevo.'], 'publica');
+            return;
+        }
+        // Paso 2: si tiene cuenta, pedir contraseÃ±a; si no, pedir que la cree
+        if ($persona['usuario_id']) {
+            $this->vista('Seguridad/IUVerificarExistente', ['paso' => 2, 'persona' => $persona, 'tieneCuenta' => true, 'error' => null], 'publica');
+        } else {
+            $this->vista('Seguridad/IUVerificarExistente', ['paso' => 2, 'persona' => $persona, 'tieneCuenta' => false, 'error' => null], 'publica');
+        }
+    }
+
+    public function ingresarExistente(): void
+    {
+        if (Sesion::usuario()) {
+            $this->redirigir('panel');
+        }
+        $personaId = (int) ($_POST['persona_id'] ?? 0);
+        $ci = $this->texto('ci');
+        $fechaNac = $this->texto('fecha_nacimiento');
+        $st = Conexion::obtener()->prepare('SELECT p.id, p.ci, p.nombres, p.apellidos, p.fecha_nacimiento, u.id AS usuario_id, u.contrasena_hash, u.estado
+                                            FROM persona p LEFT JOIN usuario u ON u.persona_id = p.id
+                                            WHERE p.id = :id');
+        $st->execute(['id' => $personaId]);
+        $persona = $st->fetch() ?: null;
+        if (!$persona) {
+            Sesion::flash('error', 'Datos invÃ¡lidos.');
+            $this->redirigir('sesion/existente');
+            return;
+        }
+        $tieneCuenta = !empty($persona['usuario_id']);
+        if ($tieneCuenta) {
+            $contrasena = (string) ($_POST['contrasena'] ?? '');
+            if (!password_verify($contrasena, (string) $persona['contrasena_hash'])) {
+                Sesion::flash('error', 'ContraseÃ±a incorrecta.');
+                $this->redirigir('sesion/existente');
+                return;
+            }
+            if ($persona['estado'] !== 'HABILITADA') {
+                Sesion::flash('error', 'Su cuenta estÃ¡ suspendida. Contacte a recepciÃ³n.');
+                $this->redirigir('sesion/existente');
+                return;
+            }
+            (new Usuario())->registrarAcceso((int) $persona['usuario_id']);
+            $cuenta = (new Usuario())->buscarPorCorreo((string) ($persona['correo'] ?? ''));
+            // buscar cuenta por persona_id
+            $st2 = Conexion::obtener()->prepare('SELECT * FROM usuario WHERE persona_id = :p');
+            $st2->execute(['p' => $personaId]);
+            $cuenta = $st2->fetch() ?: null;
+            if ($cuenta) {
+                unset($cuenta['contrasena_hash'], $cuenta['debe_cambiar_contrasena'], $cuenta['intentos_fallidos'], $cuenta['bloqueado_hasta']);
+                Sesion::abrir($cuenta);
+            }
+            (new Bitacora())->registrarEvento((int) $persona['usuario_id'], 'INICIO_SESION', 'Ingreso por CI', $this->ip(), 'usuario', (int) $persona['usuario_id']);
+            $this->redirigir('panel');
+        } else {
+            $contrasena = (string) ($_POST['contrasena'] ?? '');
+            $confirmacion = (string) ($_POST['confirmacion'] ?? '');
+            if ($error = self::validarContrasena($contrasena, $confirmacion)) {
+                Sesion::flash('error', $error);
+                $this->redirigir('sesion/existente');
+                return;
+            }
+            $correo = strtolower(trim((string) ($_POST['correo'] ?? '')));
+            if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+                Sesion::flash('error', 'Ingrese un correo vÃ¡lido para crear su cuenta.');
+                $this->redirigir('sesion/existente');
+                return;
+            }
+            if ((new Usuario())->existeCorreo($correo)) {
+                Sesion::flash('error', 'Ese correo ya estÃ¡ asociado a otra cuenta.');
+                $this->redirigir('sesion/existente');
+                return;
+            }
+            $usuarioId = (new Usuario())->insertar($personaId, (new Rol())->obtenerIdPorNombre('PACIENTE'), $correo, $contrasena, false);
+            (new Bitacora())->registrarEvento($usuarioId, 'REGISTRO_DIGITAL', 'Paciente existente creÃ³ cuenta web', $this->ip(), 'paciente', $personaId);
+            $st2 = Conexion::obtener()->prepare('SELECT * FROM usuario WHERE id = :id');
+            $st2->execute(['id' => $usuarioId]);
+            $cuenta = $st2->fetch() ?: null;
+            if ($cuenta) {
+                unset($cuenta['contrasena_hash'], $cuenta['debe_cambiar_contrasena'], $cuenta['intentos_fallidos'], $cuenta['bloqueado_hasta']);
+                Sesion::abrir($cuenta);
+            }
+            Sesion::flash('ok', 'Cuenta creada. Bienvenido(a).');
+            $this->redirigir('panel');
+        }
+    }
+
     /** Pre-registro de paciente externo: CI + fecha de nacimiento + telÃ©fono. Crea paciente PRE_REGISTRADO y envÃ­a OTP. */
     public function mostrarPreRegistro(): void
     {
@@ -98,9 +223,9 @@ final class ControlIniciarSesion extends ControlBase
     }
 
     /**
-     * El paciente que nunca vino a la cl+¡nica crea su expediente y su cuenta, y sigue directo a agendar.
-     * Reglas: mayor de 18 a+¦os (a los menores los registra su responsable en recepci+¦n); si su CI ya
-     * existe no se crea otra persona: se le indica iniciar sesi+¦n o pasar por recepci+¦n.
+     * El paciente que nunca vino a la cl+ï¿½nica crea su expediente y su cuenta, y sigue directo a agendar.
+     * Reglas: mayor de 18 a+ï¿½os (a los menores los registra su responsable en recepci+ï¿½n); si su CI ya
+     * existe no se crea otra persona: se le indica iniciar sesi+ï¿½n o pasar por recepci+ï¿½n.
      */
     public function registrarPaciente(): void
     {
@@ -128,7 +253,7 @@ final class ControlIniciarSesion extends ControlBase
             (new FichaClinica())->crearFichaVacia($id);
             $usuarioId = (new Usuario())->insertar($id, (new Rol())->obtenerIdPorNombre('PACIENTE'), $d['correo'], $contrasena, false);
             (new Bitacora())->registrarEvento($usuarioId, 'REGISTRO_EN_LINEA',
-                'Paciente nuevo ' . $expediente . ' se registr+¦ desde el portal', $this->ip(), 'paciente', $id);
+                'Paciente nuevo ' . $expediente . ' se registr+ï¿½ desde el portal', $this->ip(), 'paciente', $id);
             return $expediente;
         });
         $cuenta = (new Usuario())->buscarPorCorreo($d['correo']);
@@ -143,9 +268,9 @@ final class ControlIniciarSesion extends ControlBase
     {
         $e = [];
         $obligatorios = ['ci' => 'su documento', 'nombres' => 'sus nombres', 'apellidos' => 'sus apellidos',
-                         'fecha_nacimiento' => 'su fecha de nacimiento', 'telefono' => 'su tel+¬fono', 'correo' => 'su correo',
+                         'fecha_nacimiento' => 'su fecha de nacimiento', 'telefono' => 'su tel+ï¿½fono', 'correo' => 'su correo',
                          'contacto_emergencia_nombre' => 'el contacto de emergencia',
-                         'contacto_emergencia_parentesco' => 'el parentesco', 'contacto_emergencia_telefono' => 'el tel+¬fono de emergencia'];
+                         'contacto_emergencia_parentesco' => 'el parentesco', 'contacto_emergencia_telefono' => 'el tel+ï¿½fono de emergencia'];
         foreach ($obligatorios as $c => $t) {
             if ((string) $d[$c] === '') {
                 $e[$c] = 'Complete ' . $t . '.';
@@ -156,19 +281,19 @@ final class ControlIniciarSesion extends ControlBase
         }
         $nacimiento = \DateTime::createFromFormat('Y-m-d', $d['fecha_nacimiento']);
         if ($d['fecha_nacimiento'] !== '' && (!$nacimiento || $d['fecha_nacimiento'] <= '1900-01-01' || $d['fecha_nacimiento'] > date('Y-m-d'))) {
-            $e['fecha_nacimiento'] = 'La fecha de nacimiento no es v+ílida.';
+            $e['fecha_nacimiento'] = 'La fecha de nacimiento no es v+ï¿½lida.';
         } elseif ($nacimiento && $nacimiento->diff(new \DateTime('today'))->y < 18) {
-            $e['fecha_nacimiento'] = 'Los menores de edad se registran con su padre, madre o tutor en recepci+¦n.';
+            $e['fecha_nacimiento'] = 'Los menores de edad se registran con su padre, madre o tutor en recepci+ï¿½n.';
         }
         if ($d['ci'] !== '' && ($persona = (new Persona())->buscarPorCi($d['ci']))) {
             $e['ci'] = $persona['usuario_id']
-                ? 'Ya existe una cuenta con ese documento. Inicie sesi+¦n o use -½-+Olvid+¦ su contrase+¦a?-+.'
-                : 'Usted ya est+í registrado en la cl+¡nica. Ac+¬rquese o llame a recepci+¦n para que registren su correo y le habiliten el acceso.';
+                ? 'Ya existe una cuenta con ese documento. Inicie sesi+ï¿½n o use -ï¿½-+Olvid+ï¿½ su contrase+ï¿½a?-+.'
+                : 'Usted ya est+ï¿½ registrado en la cl+ï¿½nica. Ac+ï¿½rquese o llame a recepci+ï¿½n para que registren su correo y le habiliten el acceso.';
         }
         if ($d['correo'] !== '' && !filter_var($d['correo'], FILTER_VALIDATE_EMAIL)) {
-            $e['correo'] = 'Ingrese un correo v+ílido.';
+            $e['correo'] = 'Ingrese un correo v+ï¿½lido.';
         } elseif ($d['correo'] !== '' && (new Usuario())->existeCorreo($d['correo'])) {
-            $e['correo'] = 'Ese correo ya est+í asociado a otra cuenta.';
+            $e['correo'] = 'Ese correo ya est+ï¿½ asociado a otra cuenta.';
         }
         if ($error = self::validarContrasena($contrasena, $confirmacion)) {
             $e['contrasena'] = $error;
@@ -176,11 +301,11 @@ final class ControlIniciarSesion extends ControlBase
         return $e;
     }
 
-    /** CU01: aviso de cuenta bloqueada con los minutos restantes; el bot+¦n -½Ingresar-+ queda deshabilitado. */
+    /** CU01: aviso de cuenta bloqueada con los minutos restantes; el bot+ï¿½n -ï¿½Ingresar-+ queda deshabilitado. */
     private function mostrarBloqueo(string $correo, int $minutos): void
     {
         Sesion::flash('aviso', 'Cuenta bloqueada temporalmente por intentos fallidos. Intente nuevamente en '
-            . $minutos . ($minutos === 1 ? ' minuto' : ' minutos') . ' o recupere su contrase+¦a.');
+            . $minutos . ($minutos === 1 ? ' minuto' : ' minutos') . ' o recupere su contrase+ï¿½a.');
         $this->vista('Seguridad/IUIniciarSesion', ['correo' => $correo, 'bloqueado' => true], 'publica');
     }
 

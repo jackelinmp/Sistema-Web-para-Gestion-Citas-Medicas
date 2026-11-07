@@ -19,11 +19,21 @@ final class Persona extends EntidadBase
     /** Busca una persona por CI y devuelve su id junto con el id de usuario (si tiene cuenta). */
     public function buscarPorCi(string $ci): ?array
     {
-        $st = $this->bd->prepare('SELECT p.id, p.ci, u.id AS usuario_id
+        $st = $this->bd->prepare('SELECT p.id, p.ci, p.nombres, p.apellidos, p.fecha_nacimiento, p.sexo, p.telefono, p.direccion, p.tutor_id, u.id AS usuario_id
                                   FROM persona p
                                   LEFT JOIN usuario u ON u.persona_id = p.id
                                   WHERE p.ci = :ci');
         $st->execute(['ci' => $ci]);
+        return $st->fetch() ?: null;
+    }
+
+    public function obtenerPorId(int $id): ?array
+    {
+        $st = $this->bd->prepare('SELECT p.id, p.ci, p.nombres, p.apellidos, p.fecha_nacimiento, p.sexo, p.telefono, p.direccion, p.tutor_id, u.id AS usuario_id, u.correo
+                                  FROM persona p
+                                  LEFT JOIN usuario u ON u.persona_id = p.id
+                                  WHERE p.id = :id');
+        $st->execute(['id' => $id]);
         return $st->fetch() ?: null;
     }
 
