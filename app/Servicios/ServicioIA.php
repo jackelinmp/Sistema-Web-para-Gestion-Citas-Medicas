@@ -10,7 +10,7 @@ use App\Nucleo\Config;
  * Variables de entorno:
  *   AI_API_KEY    = clave de la API (Groq es gratis: https://console.groq.com)
  *   AI_API_URL    = URL base (por defecto: https://api.groq.com/openai/v1)
- *   AI_MODEL      = modelo (por defecto: llama-3.1-8b-instant)
+ *   AI_MODEL      = modelo (por defecto: openai/gpt-oss-20b)
  */
 final class ServicioIA
 {
@@ -29,7 +29,6 @@ final class ServicioIA
             return null;
         }
         $url = rtrim((string) (Config::obtener('AI_API_URL') ?: 'https://api.groq.com/openai/v1'), '/') . '/chat/completions';
-        $model = (string) (Config::obtener('AI_MODEL') ?: 'llama-3.1-8b-instant');
 
         $system = "Eres el asistente virtual oficial de la Clínica Vida Salud. Responde en español, de forma breve y amable. "
                 . "Solo puedes ayudar con: horarios de atención, citas médicas, reprogramación/cancelación, "
@@ -46,31 +45,36 @@ final class ServicioIA
             $system .= "- P: {$f['pregunta']}\n  R: {$f['respuesta']}\n";
         }
 
-        $payload = json_encode([
-            'model' => $model,
-            'messages' => [
-                ['role' => 'system', 'content' => $system],
-                ['role' => 'user', 'content' => $mensaje],
-            ],
-            'temperature' => 0.4,
-            'max_tokens' => 300,
-        ]);
-
-        $ctx = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => "Authorization: Bearer " . Config::obtener('AI_API_KEY') . "\r\n"
-                          . "Content-Type: application/json\r\n",
-                'content' => $payload,
-                'timeout' => 5,
-            ],
-        ]);
-        $resp = @file_get_contents($url, false, $ctx);
-        if ($resp === false) {
-            return null;
+        // Intentar con el modelo configurado; si falla (modelo inexistente), usar alternativas.
+        $modelos = array_unique([(string) (Config::obtener('AI_MODEL') ?: 'openai/gpt-oss-20b'), 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b']);
+        foreach ($modelos as $m) {
+            $payload = json_encode([
+                'model' => $m,
+                'messages' => [
+                    ['role' => 'system', 'content' => $system],
+                    ['role' => 'user', 'content' => $mensaje],
+                ],
+                'temperature' => 0.3,
+                'max_tokens' => 200,
+            ]);
+            $ctx = stream_context_create([
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Authorization: Bearer " . Config::obtener('AI_API_KEY') . "\r\n"
+                              . "Content-Type: application/json\r\n",
+                    'content' => $payload,
+                    'timeout' => 5,
+                ],
+            ]);
+            $resp = @file_get_contents($url, false, $ctx);
+            if ($resp !== false) {
+                $data = json_decode($resp, true);
+                $texto = $data['choices'][0]['message']['content'] ?? null;
+                if (is_string($texto) && trim($texto) !== '') {
+                    return trim($texto);
+                }
+            }
         }
-        $data = json_decode($resp, true);
-        $texto = $data['choices'][0]['message']['content'] ?? null;
-        return is_string($texto) && trim($texto) !== '' ? trim($texto) : null;
+        return null;
     }
 }
