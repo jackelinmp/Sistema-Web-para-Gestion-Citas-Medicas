@@ -19,6 +19,8 @@ services:
         value: cookie
       - key: APP_KEY
         generateValue: true
+      - key: CRON_CLAVE            # CU24: clave de la tarea diaria de recordatorios
+        generateValue: true
       - key: APP_URL
         sync: false
       - key: DB_HOST

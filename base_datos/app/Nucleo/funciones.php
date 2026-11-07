@@ -86,6 +86,8 @@ function icono(string $nombre, int $tam = 20): string
         'salir'         => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
         'tarjeta'       => '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
         'frasco'        => '<path d="M9 3h6M10 3v6L4 19a2 2 0 0 0 1.7 3h12.6A2 2 0 0 0 20 19l-6-10V3"/>',
+        'enviar'        => '<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>',
+        'microfono'     => '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8"/>',
         'chat'          => '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
         'grafico'       => '<path d="M3 3v18h18M7 15l4-4 3 3 5-6"/>',
         'ojo'           => '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>',
@@ -103,4 +105,24 @@ function etiquetaCu(array $item): string
 {
     $texto = $item['cu'] ?? ($item['etiqueta'] ?? '');
     return $texto === '' ? '' : '<span class="etiqueta-cu">' . e($texto) . '</span>';
+}
+
+/**
+ * Comando de voz: las pantallas que el usuario PUEDE abrir (las mismas del menú, según su rol y permisos).
+ * El navegador las usa para reconocer frases como «abrir reportes» o «ir a mis citas».
+ * @return array<int, array{texto:string, ruta:string}>
+ */
+function comandosDeVoz(array $ciclos): array
+{
+    $comandos = [['texto' => 'Inicio', 'ruta' => 'panel']];
+    foreach ($ciclos as $ciclo) {
+        foreach ($ciclo['paquetes'] as $paquete) {
+            foreach ($paquete['items'] as $item) {
+                if ($item['estado'] === 'ok' && !empty($item['ruta'])) {
+                    $comandos[] = ['texto' => $item['texto'], 'ruta' => $item['ruta']];
+                }
+            }
+        }
+    }
+    return $comandos;
 }

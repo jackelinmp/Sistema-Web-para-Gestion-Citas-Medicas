@@ -3,10 +3,10 @@ namespace App\Entidades;
 
 use App\Nucleo\EntidadBase;
 
-/** «entity» Medico — tablas medico y medico_especialidad (subclase de Persona). CU09, CU11, CU13, CU14. */
+/** Â«entityÂ» Medico â€” tablas medico y medico_especialidad (subclase de Persona). CU09, CU11, CU13, CU14. */
 final class Medico extends EntidadBase
 {
-    /** CU09: lista con nombre, matrícula, especialidades y estado; filtro por nombre y especialidad. */
+    /** CU09: lista con nombre, matrÃ­cula, especialidades y estado; filtro por nombre y especialidad. */
     public function listarMedicos(string $criterio = '', ?int $especialidad_id = null): array
     {
         $like = '%' . $criterio . '%';
@@ -45,7 +45,7 @@ final class Medico extends EntidadBase
         return $medico;
     }
 
-    /** Ids de las especialidades que ejerce el médico. */
+    /** Ids de las especialidades que ejerce el mÃ©dico. */
     public function especialidadesDe(int $persona_id): array
     {
         $st = $this->bd->prepare('SELECT especialidad_id FROM medico_especialidad WHERE medico_id = :id');
@@ -73,7 +73,7 @@ final class Medico extends EntidadBase
     }
 
     /**
-     * Reemplaza las especialidades del médico. Solo quita las que no tienen citas
+     * Reemplaza las especialidades del mÃ©dico. Solo quita las que no tienen citas
      * (la FK de cita hacia medico_especialidad impide borrar las usadas).
      */
     public function asignarEspecialidades(int $persona_id, array $especialidades): void
@@ -90,7 +90,7 @@ final class Medico extends EntidadBase
         }
     }
 
-    /** CU11: médicos activos para configurar su jornada. */
+    /** CU11: mÃ©dicos activos para configurar su jornada. */
     public function listarActivos(): array
     {
         return $this->bd->query("SELECT m.persona_id, p.nombres || ' ' || p.apellidos AS nombre
@@ -98,7 +98,7 @@ final class Medico extends EntidadBase
                                   WHERE m.estado = 'ACTIVO' ORDER BY p.apellidos, p.nombres")->fetchAll();
     }
 
-    /** CU13: médicos activos que ejercen una especialidad. */
+    /** CU13: mÃ©dicos activos que ejercen una especialidad. */
     public function listarPorEspecialidad(int $especialidad_id): array
     {
         $st = $this->bd->prepare("SELECT m.persona_id, p.nombres || ' ' || p.apellidos AS nombre
@@ -110,7 +110,7 @@ final class Medico extends EntidadBase
         $st->execute(['esp' => $especialidad_id]);
         return $st->fetchAll();
     }
-    /** CU10: ACTIVO o INACTIVO (baja l�gica: conserva su historial de citas). */
+    /** CU10: ACTIVO o INACTIVO (baja lógica: conserva su historial de citas). */
     public function cambiarEstado(int $persona_id, string $estado): void
     {
         $this->bd->prepare('UPDATE medico SET estado = :estado WHERE persona_id = :id')

@@ -3,6 +3,7 @@ namespace App\Controles\Reportes;
 
 use App\Entidades\Bitacora;
 use App\Entidades\Cita;
+use App\Entidades\Jornada;
 use App\Entidades\Pago;
 use App\Nucleo\ControlBase;
 use App\Nucleo\Sesion;
@@ -18,7 +19,7 @@ final class ControlGenerarReportes extends ControlBase
 {
     private const MODULO = 'REPORTES';
     private const TIPOS = ['productividad' => 'Productividad por médico', 'ingresos' => 'Ingresos diarios',
-                           'ausentismo' => 'Ausentismo por especialidad'];
+                           'ausentismo' => 'Ausentismo por especialidad', 'carga' => 'Carga horaria y ausencias por médico'];
 
     public function mostrarReportes(): void
     {
@@ -65,6 +66,7 @@ final class ControlGenerarReportes extends ControlBase
         return match ($f['tipo']) {
             'ingresos'   => (new Pago())->reportarIngresos($f['desde'], $f['hasta']),
             'ausentismo' => (new Cita())->reportarAusentismo($f['desde'], $f['hasta']),
+            'carga'      => (new Jornada())->reportarCargaHoraria($f['desde'], $f['hasta']),
             default      => (new Cita())->reportarProductividad($f['desde'], $f['hasta']),
         };
     }

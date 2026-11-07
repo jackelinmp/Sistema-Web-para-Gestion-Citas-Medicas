@@ -1,6 +1,8 @@
 <?php
 namespace App\Controles\Citas;
 
+use App\Controles\Comunicacion\ControlGestionarNotificaciones;
+
 use App\Entidades\Cita;
 use App\Entidades\Medico;
 use App\Nucleo\ControlBase;
@@ -33,6 +35,12 @@ final class ControlGestionarEstadosCita extends ControlBase
         $usuario  = Sesion::usuario();
         $fecha    = (string) ($_GET['fecha'] ?? date('Y-m-d'));
         $estado   = (string) ($_GET['estado'] ?? '');
+        if ($this->fechaDeFiltro('fecha') === '') {   // una fecha mal escrita en la URL daba error 500
+            $fecha = date('Y-m-d');
+        }
+        if (!in_array($estado, ['', 'PROGRAMADA', 'CONFIRMADA', 'ATENDIDA', 'CANCELADA', 'INASISTENCIA'], true)) {
+            $estado = '';
+        }
         $esMedico = ($usuario['rol'] ?? '') === 'MEDICO';
         // El médico solo ve su agenda; los demás pueden filtrar por cualquier médico.
         $medicoId = $esMedico
@@ -112,6 +120,12 @@ final class ControlGestionarEstadosCita extends ControlBase
             Sesion::flash('error', $this->mensajeBaseDatos($e));
             $this->volverALaAgenda($cita);
         }
+        $avisos = ['CONFIRMADA' => ['CONFIRMACION', 'Cita confirmada'], 'INASISTENCIA' => ['SISTEMA', 'Inasistencia registrada']];
+        if (isset($avisos[$nuevoEstado])) {
+            (new ControlGestionarNotificaciones())->notificarCita((int) $cita['id'], $avisos[$nuevoEstado][0], $avisos[$nuevoEstado][1],
+                $avisos[$nuevoEstado][1] . ': cita ' . $cita['codigo'] . ' del ' . date('d/m/Y', strtotime($cita['fecha']))
+                . ' a las ' . substr((string) $cita['hora_inicio'], 0, 5) . '.');
+        }
         Sesion::flash('ok', $mensaje);
         $this->volverALaAgenda($cita);
     }
@@ -134,7 +148,7 @@ final class ControlGestionarEstadosCita extends ControlBase
         }
     }
 
-    private function mensajeBaseDatos(\PDOException $e): string
+    protected function mensajeBaseDatos(\PDOException $e): string
     {
         if (preg_match('/ERROR:\s+(.+?)(\n|CONTEXT|$)/s', $e->getMessage(), $coincidencia)) {
             return trim($coincidencia[1]);

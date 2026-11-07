@@ -22,4 +22,4 @@ ALTER TABLE paciente ADD CONSTRAINT paciente_estado_check
     CHECK (estado IN ('ACTIVO', 'INACTIVO'));
 
 COMMIT;
-" path="C:\Users\prueb\Documents\Sistema-Web-para-Gestion-Citas-Medicas\base_datos\migraciones\06_tutor_dependientes.sql"
+

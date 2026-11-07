@@ -88,6 +88,9 @@ $iniciales = $usuario ? mb_strtoupper(mb_substr(preg_replace('/[^\p{L} ]/u', '',
         <?php if ($usuario['rol'] === 'PACIENTE' && ($avisos = (new \App\Entidades\Notificacion())->contarNoLeidas((int) $usuario['id'])) > 0): ?>
           <a class="btn-enlace enlace-barra" href="?r=notificaciones">Notificaciones<span class="contador-avisos"><?= (int) $avisos ?></span></a>
         <?php endif; ?>
+        <button type="button" class="btn-voz" data-comando-voz hidden title="Comando de voz (diga «ayuda» para ver ejemplos)" aria-label="Comando de voz">
+          <?= icono('microfono', 18) ?><span>Voz</span>
+        </button>
         <span class="rol-chip"><?= e($usuario['rol']) ?></span>
         <a class="btn-enlace enlace-barra" href="?r=sesion/cambiar">Cambiar contraseña</a>
       <?php else: ?>
@@ -101,6 +104,10 @@ $iniciales = $usuario ? mb_strtoupper(mb_substr(preg_replace('/[^\p{L} ]/u', '',
     </main>
   </div>
 </div>
+<?php if ($usuario): ?>
+<div class="voz-estado" role="status" aria-live="polite" hidden></div>
+<script type="application/json" id="comandos-voz"><?= json_encode(comandosDeVoz($ciclos), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+<?php endif; ?>
 <script src="js/app.js"></script>
 </body>
 </html>

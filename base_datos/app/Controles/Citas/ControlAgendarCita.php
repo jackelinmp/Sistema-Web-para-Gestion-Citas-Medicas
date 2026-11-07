@@ -1,6 +1,8 @@
 <?php
 namespace App\Controles\Citas;
 
+use App\Controles\Comunicacion\ControlGestionarNotificaciones;
+
 use App\Controles\Pacientes\ControlValidarRestricciones;
 use App\Entidades\Bitacora;
 use App\Entidades\Cita;
@@ -38,6 +40,12 @@ final class ControlAgendarCita extends ControlBase
             return;
         }
         $datos['paciente'] = (new Paciente())->obtenerPorId($p['paciente_id']);
+        if ($this->esPaciente()) {                                  // para elegir «para mí» o un familiar
+            $propio = (int) Sesion::usuario()['persona_id'];
+            $datos['paraQuien'] = array_merge([['id' => $propio, 'nombre' => 'Para mí']],
+                array_map(fn($f) => ['id' => (int) $f['familiar_id'], 'nombre' => $f['nombre'] . ' (' . strtolower($f['parentesco']) . ')'],
+                          array_filter((new \App\Entidades\VinculoFamiliar())->listarFamiliares($propio), fn($f) => $f['estado'] === 'ACTIVO')));
+        }
         if (!$datos['paciente'] || $datos['paciente']['estado'] !== 'ACTIVO') {
             Sesion::flash('error', 'Seleccione un paciente activo.');
             $this->redirigir('citas/nueva');
@@ -119,8 +127,11 @@ final class ControlAgendarCita extends ControlBase
             Sesion::flash('error', $this->mensajeBaseDatos($e));
             $this->redirigir($volver);
         }
-        Sesion::flash('ok', 'Cita ' . $cita['codigo'] . ' registrada en estado Programada.');
-        $this->redirigir('citas/constancia&id=' . (int) $cita['id']);
+        (new ControlGestionarNotificaciones())->notificarCita((int) $cita['id'], 'CONFIRMACION', 'Cita registrada',
+            'Registramos su cita ' . $cita['codigo'] . ' del ' . date('d/m/Y', strtotime($p['fecha'])) . ' a las '
+            . substr((string) $p['hora_inicio'], 0, 5) . '. Complete el pago para confirmarla.');
+        Sesion::flash('ok', 'Cita ' . $cita['codigo'] . ' registrada en estado Programada. Complete el pago para confirmar la reserva.');
+        $this->redirigir('pagos/detalle&cita_id=' . (int) $cita['id']);
     }
 
     /** Constancia de la cita registrada. */
@@ -132,7 +143,7 @@ final class ControlAgendarCita extends ControlBase
             $this->redirigir('citas/nueva');
         }
         $u = Sesion::usuario();
-        if ($u['rol'] === 'PACIENTE' && (int) $cita['paciente_id'] !== (int) $u['persona_id']) {
+        if ($u['rol'] === 'PACIENTE' && !$this->esMioOFamiliar((int) $cita['paciente_id'])) {
             Sesion::denegar('Intento de ver la cita ' . (int) $cita['id'] . ' de otro paciente');
         }
         $this->vista('Citas/IUConstanciaCita', ['cita' => $cita]);
@@ -142,9 +153,11 @@ final class ControlAgendarCita extends ControlBase
     {
         $usuario = Sesion::usuario();
         $pacienteId = (int) ($origen['paciente_id'] ?? 0) ?: null;
-        if (($usuario['rol'] ?? '') === 'PACIENTE') {               // el paciente solo agenda para sí mismo
-            $pacienteId = (int) $usuario['persona_id'];
+        if (($usuario['rol'] ?? '') === 'PACIENTE' && (!$pacienteId || !$this->esMioOFamiliar($pacienteId))) {
+            $pacienteId = (int) $usuario['persona_id'];             // el paciente agenda para sí o para un familiar a su cargo (CU22)
         }
+        $rol = $usuario['rol'] ?? '';
+        $origenCita = self::ORIGEN[$rol] ?? 'RECEPCION';
         return [
             'criterio'        => trim((string) ($origen['criterio'] ?? '')),
             'paciente_id'     => $pacienteId,
@@ -153,11 +166,12 @@ final class ControlAgendarCita extends ControlBase
             'fecha'           => (string) ($origen['fecha'] ?? date('Y-m-d')),
             'hora_inicio'     => (string) ($origen['hora_inicio'] ?? ''),
             'motivo_consulta' => trim((string) ($origen['motivo_consulta'] ?? '')),
+            'origen'          => $origenCita,
         ];
     }
 
     /** Traduce los rechazos de la base (EXCLUDE y triggers) a los mensajes del CU. */
-    private function mensajeBaseDatos(\PDOException $e): string
+    protected function mensajeBaseDatos(\PDOException $e): string
     {
         $m = $e->getMessage();
         if (str_contains($m, 'ex_cita_paciente')) {

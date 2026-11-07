@@ -6,6 +6,7 @@ use App\Entidades\Conversacion;
 use App\Entidades\PreguntaFrecuente;
 use App\Nucleo\Config;
 use App\Nucleo\ControlBase;
+use App\Servicios\ServicioIA;
 use App\Nucleo\Sesion;
 
 /**
@@ -25,6 +26,7 @@ final class ControlAsistenteVirtual extends ControlBase
             'conversacionId' => $convId,
             'mensajes'       => (new Conversacion())->listarMensajes($convId),
             'usuario'        => Sesion::usuario(),
+            'textoInicial'   => mb_substr(trim((string) ($_GET['texto'] ?? '')), 0, 300),   // llega desde el comando de voz
         ]);
     }
 
@@ -37,8 +39,8 @@ final class ControlAsistenteVirtual extends ControlBase
         }
         $texto = trim((string) ($_POST['texto'] ?? ''));
         if ($texto !== '') {
-            (new Conversacion())->registrarMensaje($convId, 'PACIENTE', $texto, null);
-            [$intencion, $respuesta] = $this->responder($texto, $convId);
+            [$intencion, $respuesta] = $this->responder(mb_substr($texto, 0, 300), $convId);
+            (new Conversacion())->registrarMensaje($convId, 'PACIENTE', mb_substr($texto, 0, 300), $intencion);
             (new Conversacion())->registrarMensaje($convId, 'ASISTENTE', $respuesta, $intencion);
         }
         $this->redirigir('asistente');
@@ -80,15 +82,15 @@ final class ControlAsistenteVirtual extends ControlBase
      */
     private function responder(string $texto, string $convId): array
     {
-        // Si n8n está configurado, delegar la respuesta al flujo externo (opcional, sin costo si es self-hosted).
-        $n8n = (string) Config::obtener('N8N_WEBHOOK_URL');
-        if ($n8n !== '') {
-            $resp = $this->consultarN8n($n8n, $texto, $convId);
-            if ($resp !== null) {
-                return $resp;
+        // 1) Intentar con IA (si esta configurada). Se le pasa la base de conocimiento como contexto.
+        if (ServicioIA::configurado()) {
+            $faqAll = (new PreguntaFrecuente())->listar();
+            $contexto = array_map(fn($f) => ['pregunta' => $f['pregunta'], 'respuesta' => $f['respuesta']], $faqAll);
+            $respuestaIA = ServicioIA::responder($texto, $contexto);
+            if ($respuestaIA !== null) {
+                return ['IA', $respuestaIA];
             }
         }
-
         $faq = (new PreguntaFrecuente())->buscarRespuesta($texto);
         if ($faq) {
             return ['FAQ_' . $faq['id'], (string) $faq['respuesta']];
@@ -107,7 +109,7 @@ final class ControlAsistenteVirtual extends ControlBase
             }
             $lineas = ['Sus próximas citas:'];
             foreach ($citas as $c) {
-                $lineas[] = '- ' . $c['codigo'] . ' el ' . $c['fecha'] . ' a las ' . substr((string) $c['hora_inicio'], 0, 5)
+                $lineas[] = '- ' . $c['codigo'] . ' el ' . date('d/m/Y', strtotime($c['fecha'])) . ' a las ' . substr((string) $c['hora_inicio'], 0, 5)
                           . ' con ' . $c['medico'] . ' (' . $c['especialidad'] . ').';
             }
             return ['MIS_CITAS', implode("\n", $lineas)];
@@ -124,28 +126,4 @@ final class ControlAsistenteVirtual extends ControlBase
         return ['SIN_RESPUESTA', 'No tengo una respuesta para esa consulta. Se la paso al personal para que la revise.'];
     }
 
-    /** Delega la respuesta a un flujo n8n (opcional). Devuelve null si falla para usar las reglas locales. */
-    private function consultarN8n(string $url, string $texto, string $convId): ?array
-    {
-        $usuario = Sesion::usuario();
-        $payload = json_encode(['mensaje' => $texto, 'conversacion_id' => $convId,
-                                'usuario_id' => $usuario['id'] ?? null, 'rol' => $usuario['rol'] ?? 'VISITANTE']);
-        $ctx = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-Type: application/json\r\n",
-                'content' => $payload,
-                'timeout' => 8,
-            ],
-        ]);
-        $resp = @file_get_contents($url, false, $ctx);
-        if ($resp === false) {
-            return null;
-        }
-        $data = json_decode($resp, true);
-        if (!is_array($data) || empty($data['respuesta'])) {
-            return null;
-        }
-        return [$data['intencion'] ?? 'N8N', (string) $data['respuesta']];
-    }
 }

@@ -1,67 +1,60 @@
 <?php
 /**
- * «boundary» IUAsistente — CU25 Asistente virtual.
- * mostrarChat()     -> ControlAsistenteVirtual::mostrarChat()
- * enviarMensaje()   -> ControlAsistenteVirtual::enviarMensaje()
- * cerrarConversacion() -> ControlAsistenteVirtual::cerrarConversacion()
- * @var string $conversacionId  @var array $mensajes  @var array|null $usuario
+ * «boundary» IUAsistente — CU25 Asistente virtual (chat con burbujas).
+ * mostrarChat()          -> ControlAsistenteVirtual::mostrarChat()
+ * enviarMensaje(texto)   -> ControlAsistenteVirtual::enviarMensaje()      (escribir, tocar una sugerencia o dictar 🎤)
+ * cerrarConversacion()   -> ControlAsistenteVirtual::cerrarConversacion()  (botón «Nueva conversación»)
+ * @var string $conversacionId  @var array $mensajes  @var array|null $usuario  @var string $textoInicial (comando de voz)
  */
+$sugerencias = ['¿Cuál es el horario de atención?', '¿Cómo agendo una cita?', 'Ver mis citas', '¿Qué métodos de pago aceptan?'];
 ?>
-<div class="encabezado">
-  <h2>Asistente virtual</h2>
-  <?php if (empty($usuario)): ?>
-    <p class="suave">Está conversando como visitante. Inicie sesión para ver sus citas.</p>
-  <?php endif; ?>
-</div>
+<div class="chat-caja">
 
-<div class="chat">
-  <?php foreach ($mensajes as $m): ?>
-    <div class="mensaje <?= $m['emisor'] === 'PACIENTE' ? 'propio' : 'ajeno' ?>">
-      <strong><?= $m['emisor'] === 'PACIENTE' ? 'Usted' : 'Asistente' ?>:</strong>
-      <div><?= nl2br(e($m['texto'])) ?></div>
+  <div class="chat-cabecera">
+    <span class="chat-avatar"><?= icono('chat', 20) ?></span>
+    <div class="chat-titulo">
+      <strong>Asistente Vida Salud</strong>
+      <small><?= empty($usuario) ? 'Está escribiendo como visitante' : 'Hola, ' . e(strtok((string) $usuario['nombre'], ' ')) ?></small>
     </div>
-  <?php endforeach; ?>
-  <?php if (!$mensajes): ?>
-    <p class="suave">Hola, ¿en qué puedo ayudarle? Pregunte por horarios, sus citas, cancelaciones o dudas generales.</p>
+    <?php if ($mensajes): ?>
+      <form method="post" action="?r=asistente/cerrar">
+        <?= campoCsrf() ?>
+        <input type="hidden" name="conversacion_id" value="<?= e($conversacionId) ?>">
+        <button class="btn-enlace">Nueva<span> conversación</span></button>
+      </form>
+    <?php endif; ?>
+  </div>
+
+  <div class="chat" aria-live="polite">
+    <div class="burbuja bot">¡Hola! Soy el asistente de la clínica. Pregúnteme por horarios, sus citas, pagos o cancelaciones.</div>
+    <?php foreach ($mensajes as $m): ?>
+      <div class="burbuja <?= $m['emisor'] === 'PACIENTE' ? 'yo' : 'bot' ?>">
+        <?= nl2br(e($m['texto'])) ?>
+        <time><?= e(substr((string) $m['fecha_hora'], 11, 5)) ?></time>
+      </div>
+    <?php endforeach; ?>
+  </div>
+
+  <div class="chat-sugerencias">
+    <?php foreach ($sugerencias as $s): ?>
+      <form method="post" action="?r=asistente/enviar">
+        <?= campoCsrf() ?>
+        <input type="hidden" name="conversacion_id" value="<?= e($conversacionId) ?>">
+        <button name="texto" value="<?= e($s) ?>"><?= e($s) ?></button>
+      </form>
+    <?php endforeach; ?>
+  </div>
+
+  <form class="chat-entrada" method="post" action="?r=asistente/enviar" <?= ($textoInicial ?? '') !== '' ? 'data-enviar-solo' : '' ?>>
+    <?= campoCsrf() ?>
+    <input type="hidden" name="conversacion_id" value="<?= e($conversacionId) ?>">
+    <input type="text" name="texto" value="<?= e($textoInicial ?? '') ?>" maxlength="300" placeholder="Escriba su pregunta…"
+           required autofocus autocomplete="off" aria-label="Mensaje">
+    <button type="button" class="chat-boton secundario" data-dictado hidden title="Dictar por voz" aria-label="Dictar por voz"><?= icono('microfono', 18) ?></button>
+    <button class="chat-boton" title="Enviar" aria-label="Enviar"><?= icono('enviar', 18) ?></button>
+  </form>
+
+  <?php if (empty($usuario)): ?>
+    <p class="chat-pie"><a href="?r=sesion/formulario">Iniciar sesión</a> para ver sus citas · <a href="?r=sesion/registro">Soy paciente nuevo</a></p>
   <?php endif; ?>
 </div>
-
-<form class="chat-form" method="post" action="?r=asistente/enviar">
-  <?= campoCsrf() ?>
-  <input type="hidden" name="conversacion_id" value="<?= e($conversacionId) ?>">
-  <input type="text" id="texto-chat" name="texto" placeholder="Escriba o dicte su consulta..." required autofocus style="width:60%">
-  <button type="button" id="btn-voz" class="btn secundario" title="Dictar por voz">🎤</button>
-  <button class="btn">Enviar</button>
-</form>
-
-<script>
-(function () {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const btn = document.getElementById('btn-voz');
-  const input = document.getElementById('texto-chat');
-  if (!SpeechRecognition) { btn.style.display = 'none'; return; }
-  const rec = new SpeechRecognition();
-  rec.lang = 'es-ES';
-  rec.interimResults = false;
-  rec.maxAlternatives = 1;
-  let escuchando = false;
-  btn.addEventListener('click', function () {
-    if (escuchando) { rec.stop(); return; }
-    escuchando = true;
-    btn.textContent = '⏹';
-    rec.start();
-  });
-  rec.onresult = function (e) {
-    const texto = e.results[0][0].transcript;
-    input.value = (input.value ? input.value + ' ' : '') + texto;
-  };
-  rec.onend = function () { escuchando = false; btn.textContent = '🎤'; };
-  rec.onerror = function () { escuchando = false; btn.textContent = '🎤'; };
-})();
-</script>
-
-<form method="post" action="?r=asistente/cerrar" style="margin-top:8px">
-  <?= campoCsrf() ?>
-  <input type="hidden" name="conversacion_id" value="<?= e($conversacionId) ?>">
-  <button class="btn secundario">Cerrar conversación</button>
-</form>

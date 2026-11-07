@@ -331,16 +331,53 @@ body.publica .acceso-form { background: #fff; }
 .vacio-grande h2{margin:12px 0 6px;color:inherit}
 .acciones{margin-top:16px;display:flex;gap:8px}
 
-/* 20. CICLO 2 — GRUPO 1: asistente virtual (CU25) y aviso de notificaciones (CU24) */
-.chat { display: flex; flex-direction: column; gap: var(--esp-2); max-height: 55vh; overflow-y: auto; padding: var(--esp-4);
-        background: var(--superficie-2); border: 1px solid var(--borde); border-radius: var(--radio-g); margin-bottom: var(--esp-3); }
-.chat-mensaje { max-width: 80%; padding: var(--esp-2) var(--esp-3); border-radius: var(--radio); line-height: 1.45; overflow-wrap: anywhere; }
-.chat-mensaje small { display: block; margin-top: 2px; font-size: 11px; color: var(--texto-suave); }
-.chat-mensaje.asistente { align-self: flex-start; background: var(--superficie); border: 1px solid var(--borde); }
-.chat-mensaje.propio { align-self: flex-end; background: var(--primario-claro); color: var(--texto); }
-.chat-sugerencias { display: flex; flex-wrap: wrap; gap: var(--esp-2); margin-bottom: var(--esp-3); }
-.chat-sugerencias .cupo { padding: 6px 12px; }
-.chat-formulario { display: flex; gap: var(--esp-2); }
-.chat-formulario input { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--borde); border-radius: var(--radio); font: inherit; }
+/* 20. CICLO 2 — GRUPO 1: aviso de notificaciones (CU24) */
 .contador-avisos { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 10px;
                    background: var(--acento); color: #fff; font-size: 12px; font-weight: 700; text-align: center; }
+
+/* CU18: botones Hoy / Esta semana / Este mes */
+.periodos-rapidos { display: flex; flex-wrap: nowrap; gap: var(--esp-2); align-self: flex-end; }
+.periodos-rapidos .btn { width: auto; white-space: nowrap; }
+@media (max-width: 720px) { .periodos-rapidos { width: 100%; } .periodos-rapidos .btn { flex: 1; padding-inline: 6px; } }
+
+/* Comando de voz (barra superior) */
+.btn-voz { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--borde); border-radius: 999px;
+           background: var(--superficie); color: var(--texto); font: inherit; font-size: var(--t-chico); cursor: pointer; }
+.btn-voz:hover { border-color: var(--primario); color: var(--primario); }
+.btn-voz.escuchando { background: var(--peligro, #b42318); border-color: transparent; color: #fff; animation: voz-pulso 1.2s infinite; }
+@keyframes voz-pulso { 50% { box-shadow: 0 0 0 6px rgba(180, 35, 24, .18); } }
+.voz-estado { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 60; max-width: min(92vw, 560px);
+              padding: 10px 16px; border-radius: 12px; background: #1d2b2f; color: #fff; font-size: var(--t-chico);
+              box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
+@media (max-width: 720px) { .btn-voz span { display: none; } .btn-voz { padding: 7px; } }
+
+
+/* CU25 Asistente virtual: chat con burbujas (bot a la izquierda, usuario a la derecha) */
+.chat-caja { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; background: var(--superficie);
+             border: 1px solid var(--borde); border-radius: var(--radio-g); overflow: hidden; }
+.chat-cabecera { display: flex; align-items: center; gap: var(--esp-3); padding: 12px 16px; background: var(--primario); color: #fff; }
+.chat-cabecera .btn-enlace { color: #fff; }
+.chat-avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .18); flex: none; }
+.chat-titulo { flex: 1; display: flex; flex-direction: column; line-height: 1.25; }
+.chat-titulo small { color: rgba(255, 255, 255, .85); font-size: 12px; }
+.chat-cabecera .btn-enlace { font-size: 13px; white-space: nowrap; }
+.chat { display: flex; flex-direction: column; gap: 8px; height: min(55vh, 520px); overflow-y: auto; padding: 16px; background: var(--superficie-2); }
+.burbuja { position: relative; max-width: 78%; padding: 9px 13px 18px; border-radius: 18px; line-height: 1.45; overflow-wrap: anywhere;
+           box-shadow: 0 1px 1px rgba(0, 0, 0, .06); }
+.burbuja time { position: absolute; right: 12px; bottom: 4px; font-size: 10.5px; opacity: .65; }
+.burbuja.bot { align-self: flex-start; background: var(--superficie); border: 1px solid var(--borde); border-bottom-left-radius: 4px; }
+.burbuja.yo  { align-self: flex-end; background: var(--primario); color: #fff; border-bottom-right-radius: 4px; }
+.burbuja:first-child { padding-bottom: 9px; }
+.chat-sugerencias { display: flex; gap: 8px; overflow-x: auto; padding: 10px 12px 2px; scrollbar-width: none; }
+.chat-sugerencias button { white-space: nowrap; padding: 6px 12px; border: 1px solid var(--primario); border-radius: 999px;
+                           background: var(--superficie); color: var(--primario); font: inherit; font-size: 13px; cursor: pointer; }
+.chat-sugerencias button:hover { background: var(--primario-claro); }
+.chat-entrada { display: flex; gap: 8px; padding: 10px 12px 12px; }
+.chat-entrada input[name=texto] { flex: 1; min-width: 0; padding: 11px 16px; border: 1px solid var(--borde); border-radius: 999px; font: inherit; }
+.chat-entrada input[name=texto]:focus { outline: 2px solid var(--primario-claro); border-color: var(--primario); }
+.chat-boton { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%;
+              background: var(--primario); color: #fff; cursor: pointer; }
+.chat-boton.secundario { background: var(--primario-claro); color: var(--primario-osc); }
+.chat-boton.escuchando { background: #b42318; color: #fff; animation: voz-pulso 1.2s infinite; }
+.chat-pie { text-align: center; font-size: 13px; padding: 0 12px 12px; margin: 0; color: var(--texto-suave); }
+@media (max-width: 720px) { .chat-cabecera { padding: 10px 12px; } .chat-cabecera .btn-enlace span { display: none; } .chat { height: 60vh; } .burbuja { max-width: 88%; } .chat-caja { border-radius: var(--radio); } }

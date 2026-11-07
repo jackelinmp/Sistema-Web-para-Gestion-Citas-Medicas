@@ -18,7 +18,7 @@ final class ControlGestionarBaseConocimiento extends ControlBase
 
     public function listarPreguntas(): void
     {
-        Sesion::exigirPermiso(self::MODULO, 'C');
+        Sesion::exigirPermiso(self::MODULO, 'M');   // antes 'C': el paciente veía la pantalla de administración
         $categoria = (string) ($_GET['categoria'] ?? '');
         $criterio = trim((string) ($_GET['criterio'] ?? ''));
         $this->vista('Comunicacion/IUConocimiento', [
@@ -48,7 +48,7 @@ final class ControlGestionarBaseConocimiento extends ControlBase
     public function guardarPregunta(): void
     {
         $id = (int) ($_POST['id'] ?? 0) ?: null;
-        Sesion::exigirPermiso(self::MODULO, $id ? 'M' : 'R');
+        Sesion::exigirPermiso(self::MODULO, 'M');
         $entidad = new PreguntaFrecuente();
         $datos = $this->leerFormulario();
         $errores = $this->validar($datos, $id, $entidad);

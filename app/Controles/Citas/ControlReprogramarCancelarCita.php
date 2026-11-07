@@ -123,7 +123,7 @@ final class ControlReprogramarCancelarCita extends ControlBase
             $this->redirigir($volver);
         }
         (new ControlGestionarNotificaciones())->notificarCita(
-            (int) $cita['id'], 'REPROGRAMACION',
+            (int) $cita['id'], 'SISTEMA',
             'Su cita fue reprogramada',
             'Su cita ' . $cita['codigo'] . ' fue reprogramada para el ' . date('d/m/Y', strtotime($fecha))
             . ' a las ' . substr($cupo['hora_inicio'], 0, 5) . '.'
@@ -221,23 +221,5 @@ final class ControlReprogramarCancelarCita extends ControlBase
         }
     }
 
-    private function esPaciente(): bool
-    {
-        return (Sesion::usuario()['rol'] ?? '') === 'PACIENTE';
-    }
 
-    private function mensajeBaseDatos(\PDOException $e): string
-    {
-        $m = $e->getMessage();
-        if (str_contains($m, 'ex_cita_paciente')) {
-            return 'El paciente ya tiene otra cita en ese horario.';
-        }
-        if (str_contains($m, 'ex_cita_medico')) {
-            return 'El horario seleccionado ya no está disponible.';
-        }
-        if (preg_match('/ERROR:\s+(.+?)(\n|CONTEXT|$)/s', $m, $x)) {
-            return trim($x[1]);
-        }
-        return 'No se pudo guardar el cambio. Intente nuevamente.';
-    }
 }

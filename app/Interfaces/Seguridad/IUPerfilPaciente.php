@@ -18,4 +18,3 @@ use App\Nucleo\Sesion;
   <button class="btn">Guardar cambios</button>
   <a class="btn secundario" href="?r=sesion/cambiar">Cambiar contraseña</a>
 </form>
-" path="C:\Users\prueb\Documents\Sistema-Web-para-Gestion-Citas-Medicas\app\Interfaces\Seguridad\IUPerfilPaciente.php"
