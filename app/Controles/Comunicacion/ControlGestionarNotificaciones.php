@@ -75,7 +75,8 @@ final class ControlGestionarNotificaciones extends ControlBase
         foreach ($citas as $c) {
             $asunto = 'Recordatorio de su cita médica';
             $mensaje = "Le recordamos su cita del {$c['fecha']} a las " . substr((string) $c['hora_inicio'], 0, 5)
-                     . " con {$c['medico']} ({$c['especialidad']}). Código: {$c['codigo']}.";
+                     . " con {$c['medico']} ({$c['especialidad']}). Código: {$c['codigo']}."
+                     . " Paciente: {$c['paciente']}.";
             (new Notificacion())->registrar((int) $c['usuario_id'], (int) $c['id'], 'RECORDATORIO', $asunto, $mensaje);
             $total++;
         }

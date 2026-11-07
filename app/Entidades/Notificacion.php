@@ -56,17 +56,22 @@ final class Notificacion extends EntidadBase
         $this->bd->prepare('UPDATE notificacion SET fecha_envio = now() WHERE id = :id')->execute(['id' => $id]);
     }
 
-    /** CU24: citas activas de una fecha cuyo paciente tiene cuenta y aún no recibió recordatorio. */
+    /** CU24: citas activas de una fecha cuyo paciente (o su tutor) tiene cuenta y aún no recibió recordatorio. */
     public function listarCitasSinRecordatorio(string $fecha): array
     {
         $st = $this->bd->prepare("SELECT c.id, c.codigo, c.fecha, c.hora_inicio, c.estado, c.medico, c.especialidad,
-                                         c.pago_estado, u.id AS usuario_id
+                                         c.pago_estado, c.paciente,
+                                         COALESCE(u.id, ut.id) AS usuario_id
                                     FROM vw_citas_detalle c
-                                    JOIN usuario u ON u.persona_id = c.paciente_id AND u.estado = 'HABILITADA'
+                                    JOIN persona pp ON pp.id = c.paciente_id
+                                    LEFT JOIN persona pt ON pt.id = pp.tutor_id
+                                    LEFT JOIN usuario u ON u.persona_id = c.paciente_id AND u.estado = 'HABILITADA'
+                                    LEFT JOIN usuario ut ON ut.persona_id = pp.tutor_id AND ut.estado = 'HABILITADA'
                                    WHERE c.fecha = CAST(:f AS date) AND c.estado IN ('PROGRAMADA', 'CONFIRMADA')
+                                     AND COALESCE(u.id, ut.id) IS NOT NULL
                                      AND NOT EXISTS (SELECT 1 FROM notificacion n
-                                                      WHERE n.cita_id = c.id AND n.tipo = 'RECORDATORIO')
-                                   ORDER BY c.hora_inicio");
+                                                       WHERE n.cita_id = c.id AND n.tipo = 'RECORDATORIO')
+                                    ORDER BY c.hora_inicio");
         $st->execute(['f' => $fecha]);
         return $st->fetchAll();
     }
