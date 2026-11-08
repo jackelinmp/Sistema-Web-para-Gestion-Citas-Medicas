@@ -27,6 +27,7 @@ final class ControlAsistenteVirtual extends ControlBase
             'mensajes'       => (new Conversacion())->listarMensajes($convId),
             'usuario'        => Sesion::usuario(),
             'textoInicial'   => mb_substr(trim((string) ($_GET['texto'] ?? '')), 0, 300),   // llega desde el comando de voz
+            'sugerencias'    => array_merge((new PreguntaFrecuente())->listarSugerencias(3), ['Ver mis citas']),
         ]);
     }
 
@@ -66,8 +67,8 @@ final class ControlAsistenteVirtual extends ControlBase
         }
         $usuario = Sesion::usuario();
         $pacienteId = null;
-        if ($usuario && ($usuario['rol'] ?? '') === 'PACIENTE') {
-            $pacienteId = (int) $usuario['persona_id'];
+        if ($usuario && ($usuario['rol'] ?? '') === 'PACIENTE' && (new \App\Entidades\Paciente())->obtenerPorId((int) $usuario['persona_id'])) {
+            $pacienteId = (int) $usuario['persona_id'];          // una cuenta sin expediente conversa como visitante identificado
         }
         $ip = $_SERVER['REMOTE_ADDR'] ?? null;
         $id = (new Conversacion())->iniciar($pacienteId, $ip);
@@ -76,21 +77,13 @@ final class ControlAsistenteVirtual extends ControlBase
     }
 
     /**
-     * Responde por reglas: primero busca en la base de conocimiento (CU26),
-     * luego reconoce intenciones simples (mis citas, horarios). Si nada aplica,
-     * registra la pregunta como SIN_RESPUESTA para que el personal la revise.
+     * Orden de respuesta (de lo más confiable a lo menos):
+     *  1) la base de conocimiento (CU26); 2) reglas propias: mis citas, horarios, cancelar;
+     *  3) la IA, solo si está configurada; 4) SIN_RESPUESTA, que el personal ve en CU26 para agregar la pregunta.
      */
     private function responder(string $texto, string $convId): array
     {
-        // 1) Intentar con IA (si esta configurada). Se le pasa la base de conocimiento como contexto.
-        if (ServicioIA::configurado()) {
-            $faqAll = (new PreguntaFrecuente())->listar();
-            $contexto = array_map(fn($f) => ['pregunta' => $f['pregunta'], 'respuesta' => $f['respuesta']], $faqAll);
-            $respuestaIA = ServicioIA::responder($texto, $contexto);
-            if ($respuestaIA !== null) {
-                return ['IA', $respuestaIA];
-            }
-        }
+        // 1) Base de conocimiento (CU26): respuesta oficial y siempre igual
         $faq = (new PreguntaFrecuente())->buscarRespuesta($texto);
         if ($faq) {
             return ['FAQ_' . $faq['id'], (string) $faq['respuesta']];
@@ -103,7 +96,7 @@ final class ControlAsistenteVirtual extends ControlBase
             if (!$usuario) {
                 return ['SIN_SESION', 'Para ver sus citas debe iniciar sesión.'];
             }
-            $citas = (new Cita())->listarProximas((int) $usuario['persona_id'], '');
+            $citas = (new Cita())->listarProximas($this->pacientesACargo() ?? (int) $usuario['persona_id'], '');   // las suyas y las de sus dependientes
             if (!$citas) {
                 return ['MIS_CITAS', 'No tiene citas próximas registradas.'];
             }
@@ -123,7 +116,23 @@ final class ControlAsistenteVirtual extends ControlBase
             return ['CAMBIOS', 'Puede reprogramar o cancelar sus citas desde "Mis citas", con al menos 24 horas de anticipación.'];
         }
 
+        // 3) Solo si nada de lo anterior aplica: IA (si está configurada), con las preguntas activas como contexto
+        if (ServicioIA::configurado()) {
+            $contexto = array_map(fn($f) => ['pregunta' => $f['pregunta'], 'respuesta' => $f['respuesta']],
+                                  array_filter((new PreguntaFrecuente())->listar(), fn($f) => $f['estado']));
+            $respuestaIA = ServicioIA::responder($texto, $contexto);
+            if ($respuestaIA !== null) {
+                return ['IA', self::limpiarFormato($respuestaIA)];
+            }
+        }
+
         return ['SIN_RESPUESTA', 'No tengo una respuesta para esa consulta. Se la paso al personal para que la revise.'];
     }
 
+    /** La IA a veces responde con **negritas** o # títulos: el chat muestra texto simple. */
+    private static function limpiarFormato(string $texto): string
+    {
+        $texto = preg_replace('/\*\*|__|`/', '', $texto);
+        return trim(preg_replace('/^\s*#+\s*/m', '', $texto));
+    }
 }

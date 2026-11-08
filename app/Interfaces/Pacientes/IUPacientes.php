@@ -29,7 +29,8 @@ use App\Nucleo\Sesion;
   <?php foreach ($pacientes as $p): ?>
     <tr class="<?= $p['estado'] === 'ACTIVO' ? '' : 'inactivo' ?>">
       <td><?= e($p['nro_expediente']) ?></td>
-      <td><?= e($p['apellidos'] . ', ' . $p['nombres']) ?></td>
+      <td><?= e($p['apellidos'] . ', ' . $p['nombres']) ?>
+        <?php if (empty($p['contacto_emergencia_nombre'])): ?><span class="etiqueta-pendiente" title="Sacó su cita en línea: complete el contacto de emergencia en su primera visita">Datos por completar</span><?php endif; ?></td>
       <td><?= e($p['ci']) ?></td>
       <td><?= fecha($p['fecha_nacimiento']) ?></td>
       <td><?= e($p['telefono']) ?></td>

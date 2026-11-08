@@ -38,6 +38,22 @@ abstract class ControlBase
     }
 
     /**
+     * Usuario paciente que aún no tiene expediente propio (por ejemplo, un padre que solo reserva para su hijo).
+     * true = se mostró la pantalla informativa con sus dependientes menores, y el control debe terminar.
+     */
+    protected function mostrarSinExpediente(?int $pacienteId, string $titulo, string $ruta): bool
+    {
+        if (!$this->esPaciente() || $pacienteId !== (int) Sesion::usuario()['persona_id']
+            || (new \App\Entidades\Paciente())->obtenerPorId($pacienteId)) {
+            return false;
+        }
+        $menores = array_filter((new \App\Entidades\VinculoFamiliar())->listarFamiliares($pacienteId),
+                                fn($f) => $this->esMenorACargo((int) $f['familiar_id']));
+        $this->vista('Pacientes/IUSinExpediente', ['titulo' => $titulo, 'ruta' => $ruta, 'menores' => array_values($menores)]);
+        return true;
+    }
+
+    /**
      * Ids de los pacientes que el rol PACIENTE puede gestionar: el suyo y los de su grupo familiar (CU22).
      * Para el personal devuelve null (sin restricción).
      */
@@ -55,26 +71,45 @@ abstract class ControlBase
     }
 
     /**
-     * Acceso a los datos de un paciente (CU07, CU20, CU21, CU22, CU23).
-     * - Exige el permiso de consulta del módulo.
-     * - Paciente: sin $pacienteId devuelve el suyo; con $pacienteId solo acepta el suyo o el de un
-     *   familiar a su cargo (CU22). Cualquier otro se registra en la bitácora como acceso denegado.
-     * - Personal: devuelve el $pacienteId pedido (null = todavía no eligió paciente).
+     * Acceso a los datos de un paciente (CU07 historial, CU20 pagos, CU21 ficha, CU22 familia, CU23 laboratorio).
+     * Personal: necesita el permiso de consulta del módulo y devuelve el paciente pedido (null = aún no eligió).
+     * Cuenta de paciente: no usa permisos de personal; la regla es de quién son los datos:
+     *   - lo suyo: siempre;
+     *   - de una persona a su cargo (CU22): citas y pagos (módulos CITAS y PAGOS);
+     *   - información clínica (historial, ficha, laboratorio) de otra persona: solo si es un menor a su cargo
+     *     (la de un adulto es privada aunque otro le saque las citas).
+     * Cualquier otro intento queda en la bitácora como acceso denegado.
      */
     protected function exigirAccesoPaciente(string $modulo, ?int $pacienteId): ?int
     {
-        Sesion::exigirPermiso($modulo, 'C');
         if (!$this->esPaciente()) {
+            Sesion::exigirPermiso($modulo, 'C');
             return $pacienteId;
         }
+        Sesion::exigirLogin();
         $propio = (int) Sesion::usuario()['persona_id'];
         if ($pacienteId === null || $pacienteId === $propio) {
             return $propio;
         }
-        if (!(new \App\Entidades\VinculoFamiliar())->esFamiliar($propio, $pacienteId)) {
+        $permitido = in_array($modulo, ['CITAS', 'PAGOS'], true)
+            ? in_array($pacienteId, $this->pacientesACargo() ?? [], true)
+            : $this->esMenorACargo($pacienteId);
+        if (!$permitido) {
             Sesion::denegar('Intento de ver datos del paciente ' . $pacienteId);
         }
         return $pacienteId;
+    }
+
+    /** ¿$pacienteId es un menor de edad del que el usuario en sesión es tutor o responsable (CU22)? */
+    protected function esMenorACargo(int $pacienteId): bool
+    {
+        $propio = (int) (Sesion::usuario()['persona_id'] ?? 0);
+        $st = \App\Nucleo\Conexion::obtener()->prepare(
+            "SELECT 1 FROM persona p
+              WHERE p.id = :p AND p.fecha_nacimiento > current_date - interval '18 years'
+                AND (p.tutor_id = :t OR EXISTS (SELECT 1 FROM vinculo_familiar v WHERE v.paciente_id = :t2 AND v.familiar_id = p.id))");
+        $st->execute(['p' => $pacienteId, 't' => $propio, 't2' => $propio]);
+        return (bool) $st->fetchColumn();
     }
 
     /** Fecha AAAA-MM-DD de un filtro GET; cadena vacía si falta o no es válida. */

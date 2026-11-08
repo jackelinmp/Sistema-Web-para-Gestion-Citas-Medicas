@@ -61,4 +61,11 @@ final class Persona extends EntidadBase
         $this->bd->prepare('UPDATE persona SET tutor_id = :t WHERE id = :id')
                  ->execute(['t' => $tutorId, 'id' => $id]);
     }
+
+    /** Mi perfil: la persona cambia solo su celular y su dirección. */
+    public function actualizarContacto(int $id, ?string $telefono, ?string $direccion): void
+    {
+        $this->bd->prepare('UPDATE persona SET telefono = :t, direccion = :d WHERE id = :id')
+                 ->execute(['t' => $telefono, 'd' => $direccion, 'id' => $id]);
+    }
 }

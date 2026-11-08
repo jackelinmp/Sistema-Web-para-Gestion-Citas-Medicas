@@ -41,10 +41,6 @@ return [
     'sesion/cerrar'              => [ControlIniciarSesion::class, 'cerrarSesion', 'POST'],
     'perfil'                     => [ControlPerfilPaciente::class, 'mostrarPerfil', 'GET'],
     'perfil/guardar'             => [ControlPerfilPaciente::class, 'guardarPerfil', 'POST'],
-    'sesion/existente'           => [ControlIniciarSesion::class, 'mostrarVerificarExistente', 'GET'],
-    'sesion/existente/verificar' => [ControlIniciarSesion::class, 'verificarExistente', 'POST'],
-    'sesion/existente/ingresar'  => [ControlIniciarSesion::class, 'ingresarExistente', 'POST'],
-    'sesion/pre-registro'        => [ControlIniciarSesion::class, 'mostrarRegistro', 'GET'],   // el pre-registro se retiró (migración 06): lleva al registro
     'panel'                      => [ControlIniciarSesion::class, 'mostrarPanel', 'GET'],
     'sesion/recuperar'           => [ControlIniciarSesion::class, 'mostrarRecuperacion', 'GET'],
     'sesion/recuperar/enviar'    => [ControlIniciarSesion::class, 'solicitarRecuperacion', 'POST'],
@@ -64,8 +60,6 @@ return [
     'pacientes/formulario'       => [ControlGestionarPacientes::class, 'mostrarFormulario', 'GET'],
     'pacientes/guardar'          => [ControlGestionarPacientes::class, 'guardarPaciente', 'POST'],
     'pacientes/estado'           => [ControlGestionarPacientes::class, 'cambiarEstado', 'POST'],
-    'pacientes/pre-registrados'  => [ControlGestionarPacientes::class, 'listarPreRegistrados', 'GET'],
-    'pacientes/activar'          => [ControlGestionarPacientes::class, 'activarPaciente', 'POST'],
     // CU09 Gestionar Médicos
     'medicos'                    => [ControlGestionarMedicos::class, 'listarMedicos', 'GET'],
     'medicos/formulario'         => [ControlGestionarMedicos::class, 'mostrarFormulario', 'GET'],
@@ -87,6 +81,7 @@ return [
     'disponibilidad'             => [ControlVerificarDisponibilidad::class, 'mostrarFiltros', 'GET'],
     // CU14 Agendar Cita Médica (incluye CU06 y CU13)
     'citas/nueva'                => [ControlAgendarCita::class, 'mostrarFormulario', 'GET'],
+    'citas/para-mi'              => [ControlAgendarCita::class, 'seleccionarParaMi', 'POST'],   // abre su expediente si aún no lo tiene
     'citas/confirmar'            => [ControlAgendarCita::class, 'confirmarCita', 'POST'],
     'citas/constancia'           => [ControlAgendarCita::class, 'mostrarConstancia', 'GET'],
     // CU06 Validar Edad y Restricciones (pantalla de consulta; también la usa CU14 como «include»)
@@ -152,6 +147,8 @@ return [
     'grupo-familiar'             => [ControlGestionarGrupoFamiliar::class, 'mostrarGrupo', 'GET'],
     'grupo-familiar/agregar'     => [ControlGestionarGrupoFamiliar::class, 'agregarFamiliar', 'POST'],
     'grupo-familiar/quitar'      => [ControlGestionarGrupoFamiliar::class, 'quitarFamiliar', 'POST'],
+    'citas/otra-persona'         => [ControlGestionarGrupoFamiliar::class, 'mostrarOtraPersona', 'GET'],      // CU14 + CU22
+    'citas/otra-persona/guardar' => [ControlGestionarGrupoFamiliar::class, 'registrarOtraPersona', 'POST'],
     // CU23 Gestionar Resultados de Laboratorio
     'laboratorio'                => [ControlGestionarResultados::class, 'listarResultados', 'GET'],
     'laboratorio/solicitar'      => [ControlGestionarResultados::class, 'mostrarSolicitud', 'GET'],
@@ -163,6 +160,6 @@ return [
     'laboratorio/cancelar'       => [ControlGestionarResultados::class, 'cancelarSolicitud', 'POST'],
     'laboratorio/archivo'        => [ControlGestionarResultados::class, 'descargarArchivo', 'GET'],
     // Paciente nuevo: registro en línea (extensión de CU01 / CU05)
-    'sesion/registro'            => [ControlIniciarSesion::class, 'mostrarRegistro', 'GET'],
-    'sesion/registro/guardar'    => [ControlIniciarSesion::class, 'registrarPaciente', 'POST'],
+    'sesion/registro'            => [ControlIniciarSesion::class, 'mostrarCrearCuenta', 'GET'],
+    'sesion/registro/guardar'    => [ControlIniciarSesion::class, 'crearCuenta', 'POST'],
 ];

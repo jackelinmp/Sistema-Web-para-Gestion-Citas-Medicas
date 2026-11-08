@@ -12,13 +12,13 @@
     <aside class="acceso-marca">
       <span class="logo grande"><?= icono('corazon', 30) ?></span>
       <h1>Clínica Vida Salud</h1>
-      <p>Sistema web de gestión de citas médicas.</p>
+      <p>Portal de citas médicas</p>
       <ul>
-        <li><?= icono('calendario-ok', 18) ?> Agenda de citas por especialidad y médico</li>
-        <li><?= icono('paciente', 18) ?> Pacientes y expedientes en un solo lugar</li>
-        <li><?= icono('escudo', 18) ?> Acceso por roles y bitácora de auditoría</li>
+        <li><?= icono('calendario-ok', 18) ?> Reserve y pague sus consultas en línea, por especialidad y médico</li>
+        <li><?= icono('paciente', 18) ?> Saque fichas para usted, sus hijos o un familiar desde una sola cuenta</li>
+        <li><?= icono('escudo', 18) ?> Reciba confirmaciones y recordatorios por correo o WhatsApp</li>
       </ul>
-      <small>Personal autorizado: Administrador, Recepcionista, Médico y Paciente.</small>
+      <small>Sus datos clínicos están protegidos: solo los ven usted y el personal autorizado.</small>
     </aside>
     <main class="tarjeta acceso-form">
       <?php require __DIR__ . '/mensajes.php'; ?>

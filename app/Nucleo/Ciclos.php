@@ -40,7 +40,9 @@ final class Ciclos
         if (empty($item['listo']) || empty($item['ruta'])) {
             return 'dev';
         }
-        if ($item['modulo'] && !Sesion::puede($item['modulo'], $item['accion'])) {
+        // 'paciente' => true: la cuenta de paciente también lo ve (con sus propios datos, ver ControlBase::exigirAccesoPaciente)
+        $esPaciente = (Sesion::usuario()['rol'] ?? '') === 'PACIENTE';
+        if ($item['modulo'] && !Sesion::puede($item['modulo'], $item['accion']) && !(!empty($item['paciente']) && $esPaciente)) {
             return 'rol';
         }
         return 'ok';

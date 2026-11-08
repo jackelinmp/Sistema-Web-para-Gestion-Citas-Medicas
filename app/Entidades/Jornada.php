@@ -3,10 +3,10 @@ namespace App\Entidades;
 
 use App\Nucleo\EntidadBase;
 
-/** Â«entityÂ» Jornada â€” tabla jornada (horario semanal de atenciÃ³n de un mÃ©dico, CU11). */
+/** «entity» Jornada — tabla jornada (horario semanal de atención de un médico, CU11). */
 final class Jornada extends EntidadBase
 {
-    /** Jornada vigente indexada por dÃ­a (1 = lunes ... 7 = domingo). */
+    /** Jornada vigente indexada por día (1 = lunes ... 7 = domingo). */
     public function listarPorMedico(int $medico_id): array
     {
         $st = $this->bd->prepare('SELECT dia_semana, hora_inicio, hora_fin, duracion_bloque_min
@@ -21,7 +21,7 @@ final class Jornada extends EntidadBase
 
     /**
      * Guarda la nueva jornada: la anterior deja de estar vigente (se conserva) y se
-     * registra una fila por dÃ­a de atenciÃ³n. La restricciÃ³n ex_jornada_superpuesta
+     * registra una fila por día de atención. La restricción ex_jornada_superpuesta
      * de la base impide horarios superpuestos.
      */
     public function guardar(int $medico_id, array $dias): void

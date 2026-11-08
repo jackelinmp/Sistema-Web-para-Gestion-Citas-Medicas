@@ -156,12 +156,13 @@ Destinado a: secciones 7 (Implementación) y 8 (Pruebas) del informe.
 
 ## 4. Cambios transversales
 
-### Autenticación (Puerta A y B)
+### Autenticación y pacientes (revisión 2026-11-07)
 - **Login** (`sesion/formulario`): usuario = correo **o CI**, con contraseña. Mismo bloqueo 3 intentos / 15 min y recuperación por correo.
-- **Puerta A** (`sesion/existente`): paciente existente entra con CI + fecha de nacimiento. Si tiene cuenta, pide contraseña; si no, crea cuenta en el momento. El servidor revalida CI + fecha antes de operar (corrige un intento de crear cuentas sobre expedientes ajenos).
-- **Puerta B** (`sesion/registro`): paciente nuevo se registra con todos los datos y se crea cuenta inmediatamente.
-- **Pre-registro simple** (`sesion/pre-registro`): paciente ingresa CI + fecha nacimiento + teléfono; recepción activa el expediente desde `pacientes/pre-registrados`.
-- **Perfil** (`perfil`): actualizar teléfono y correo. Cambio de contraseña en `sesion/cambiar`.
+- **Crear mi cuenta** (`sesion/registro` → `ControlIniciarSesion::crearCuenta`): solo adultos y solo datos básicos (sin contacto de emergencia ni datos médicos). Si el CI ya es paciente → «Pida su cuenta en recepción».
+- **Para otra persona** (`citas/para-otra-persona` → `ControlGestionarGrupoFamiliar::registrarNuevaPersona`): crea paciente + ficha vacía + vínculo; si es menor, `tutor_id` = quien lo registra y, sin CI, usa `CI-del-tutor-1`. Un CI ajeno existente no se vincula: se atiende en recepción.
+- Se retiraron «Ya soy paciente (CI + fecha)» y el pre-registro (`sesion/existente*`, `sesion/pre-registro`, `pacientes/pre-registrados`, `pacientes/activar`): permitían entrar a expedientes ajenos conociendo dos datos.
+- **Acceso** (`ControlBase::exigirAccesoPaciente`): citas y pagos de todos los que tiene a cargo; historial, ficha y laboratorio solo propios y de menores a cargo.
+- **Mi perfil** (`perfil`): celular, dirección, correo, avisos por WhatsApp y contacto de emergencia (opcional). Nombre/CI/fecha solo los corrige recepción.
 
 ### UI / Menú
 - Los ítems bloqueados (por rol o no implementados) **ya no se muestran** en el menú lateral ni en el panel. Solo aparece lo que el usuario puede usar.
@@ -202,8 +203,14 @@ Destinado a: secciones 7 (Implementación) y 8 (Pruebas) del informe.
 | 03 | `03_ciclo2_copago_seguro.sql` | Copago en seguros |
 | 04 | `04_pre_registro_paciente.sql` | Pre-registro |
 | 06 | `06_tutor_dependientes.sql` | Dependientes (tutor_id) |
+| 07 | `07_resultado_archivo.sql` | Archivo del resultado (CU23) |
+| 08 | `08_preguntas_frecuentes_base.sql` | FAQ iniciales (CU26) |
+| 09 | `09_catalogos_base.sql` | Aseguradoras y tipos de examen |
+| 10 | `10_permisos_ciclo2.sql` | Permisos de los módulos del Ciclo 2 |
+| 11 | `11_avisos_whatsapp.sql` | Avisos por WhatsApp (CU24) |
+| 12 | `12_responsable_sin_expediente.sql` | El responsable con cuenta no necesita expediente |
 
-Todas idempotentes. Si la base es nueva, basta con `base_datos_completa.sql` (incluye 01 y 02) + aplicar 03, 04 y 06.
+Todas idempotentes. Base nueva: `base_datos_completa.sql` + 02, 03, 04, 06, 07, 08, 09, 10, 11 y 12.
 
 ---
 
@@ -215,7 +222,7 @@ Todas idempotentes. Si la base es nueva, basta con `base_datos_completa.sql` (in
 | Administrador | `admin@clinicavidasalud.com` | `Admin123*` |
 | Recepcionista | `recepcion1@clinicavidasalud.com` | `Clinica123*` |
 | Médico | `veronica.salazar@clinicavidasalud.com` | `Clinica123*` |
-| Paciente | `teresa.apaza@correo.com` | `Clinica123*` |
+| Paciente | `carla.villarroel@correo.com` | `Clinica123*` |
 
 ### Para probar todos los casos de uso
 Iniciar sesión como **Administrador** (ve todos los menús). El menú ahora oculta lo que el rol no puede usar.

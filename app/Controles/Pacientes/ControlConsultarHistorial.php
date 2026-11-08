@@ -31,6 +31,9 @@ final class ControlConsultarHistorial extends ControlBase
             ]);
             return;
         }
+        if ($this->mostrarSinExpediente($pacienteId, 'Historial clínico', 'historial')) {
+            return;
+        }
         $paciente = (new Paciente())->obtenerPorId($pacienteId);
         if (!$paciente) {
             Sesion::flash('error', 'El paciente no existe.');

@@ -41,3 +41,29 @@ Agregado
 Comando de voz en todo el sistema (botón «Voz» de la barra): agenda por fecha, buscar paciente, reportes por periodo, abrir cualquier pantalla del menú y preguntar al asistente.
 CU18: reporte «Carga horaria y ausencias por médico» y botones Hoy / Esta semana / Este mes.
 `docs/metodos_por_control.md`: métodos de cada clase control con su ruta, generado desde el código.
+
+## Revisión 2026-11-07 (2): pacientes, cuentas y avisos
+
+| CU | Archivo | Cambio | Motivo | Documento |
+|---|---|---|---|---|
+| CU01 | `ControlIniciarSesion`, `IUCrearCuenta`, `IUIniciarSesion` | «Crear mi cuenta» solo para adultos y con datos básicos; se quitan «Ya soy paciente» y el pre-registro | Más simple para el usuario y sin acceso a expedientes ajenos con CI + fecha | 4.3 CU01, 6.2 secuencia |
+| CU14, CU22 | `ControlGestionarGrupoFamiliar`, `IUNuevaPersona`, `IUAgendarCita`, `app/rutas.php` | Paso «¿Para quién es la cita?» con «+ Para otra persona» | Un padre saca la cita de su hijo sin que el hijo tenga cuenta | 4.3 CU14/CU22 |
+| CU07, CU21, CU23 | `ControlBase::exigirAccesoPaciente` | Historial, ficha y resultados: propios y de menores a cargo; citas y pagos: de todos los que tiene a cargo | Privacidad de adultos agregados como familiares | 4.1.1 RBAC |
+| CU24 | `11_avisos_whatsapp.sql`, `ServicioWhatsApp`, `ControlGestionarNotificaciones`, `Notificacion` | Avisos por WhatsApp opcionales, línea «primera consulta», recordatorio con fecha dd/mm/aaaa, cron con `Authorization: Bearer` | Pedido del equipo: recordatorio 24 h antes al celular | 4.3 CU24, 5.3 clases (nuevo servicio externo) |
+| CU24 | `Cita::listarAgenda`, `IUAgendaDia` | Botón «Avisar por WhatsApp» (wa.me) en la agenda de recepción, al celular del paciente o de su responsable | Respaldo manual cuando la API no está configurada | 4.3 CU15 |
+| CU05 | `IUPacientes` | Etiqueta «Datos por completar» si falta el contacto de emergencia | Recepción completa los datos en la primera visita | 4.3 CU05 |
+| Perfil | `ControlPerfilPaciente`, `IUPerfilPaciente`, `principal.php` | Mi perfil: celular, dirección, correo, WhatsApp y contacto de emergencia; enlace en la barra y en el menú | Faltaba acceso al perfil en el celular | 4.3 CU01 |
+| Datos | `OPCIONAL_datos_de_ejemplo.sql` | Inserciones de catálogos sin duplicar (09 ya las crea); la cuenta de ejemplo de una niña pasa a su mamá (`carla.villarroel@correo.com`) | Error al cargar los datos de ejemplo después de la 09; un menor no tiene cuenta | Anexo de pruebas |
+
+## Revisión 2026-11-08: usuario ≠ paciente, acceso y reportes
+
+| CU | Archivo | Cambio | Motivo | Documento |
+|---|---|---|---|---|
+| CU01 | `ControlIniciarSesion::crearCuenta`, `IUCrearCuenta`, `IUIniciarSesion` | La cuenta crea solo `persona` + `usuario`; inicio de sesión con el mismo diseño, menos texto y el enlace al asistente virtual | Separar acceso web y expediente clínico | 4.3 CU01, 5.3 clases |
+| CU14 | `ControlAgendarCita::seleccionarParaMi`, `IUAgendarCita`, `rutas.php` (`citas/para-mi`) | «¿Para quién es la cita?»: «Para mí» abre el expediente si falta | El padre que no se atiende no queda como paciente | 4.3 CU14, 6.2 secuencia |
+| CU22 | `ControlGestionarGrupoFamiliar::mostrarOtraPersona / registrarOtraPersona`, `IUOtraPersona`, `Paciente::abrirExpediente` | «Para otra persona»: cualquier usuario saca ficha para otra persona; si ya es paciente se usa su expediente (CI + fecha de nacimiento); un menor con responsable se agrega en recepción | Funciona como una clínica real: se puede sacar ficha para otro | 4.3 CU22 |
+| CU07, CU21, CU23 | `ControlBase::mostrarSinExpediente`, `IUSinExpediente` | Usuario sin expediente ve un aviso y a sus dependientes menores | Evitar errores y ser claro | 4.3 |
+| BD | `12_responsable_sin_expediente.sql`, `base_datos_completa.sql` | `vinculo_familiar.paciente_id` → `persona(id)` | El responsable no necesita expediente | Diagrama de clases / modelo físico |
+| CU18 | `ControlGenerarReportes`, `IUReportes`, `Cita::listarParaReporte`, `Paciente::listarRegistrados`, `PdfSimple` | Reportes de citas (fecha/médico/especialidad/estado, agenda diaria) y pacientes registrados; descarga Excel y PDF con totales | RF13 del enunciado | 4.3 CU18 |
+| — | `Cita.php`, `Medico.php`, `Jornada.php` | Tildes corruptas en comentarios corregidas | Legibilidad | — |
+| CU01 | `ControlIniciarSesion::crearCuenta`, `IUIniciarSesion` | Vinculación automática por CI: si la persona ya existe en la clínica (sin cuenta) y la fecha de nacimiento coincide, la cuenta se crea sobre ese registro; no se duplica y ve su historial | No obligar a pasar por recepción para tener cuenta | 4.3 CU01 |

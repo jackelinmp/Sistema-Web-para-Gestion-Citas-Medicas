@@ -24,17 +24,26 @@ $enlace = fn(array $extra) => '?' . e(http_build_query($base + $extra));
 
 <?php if ($paso === 1): ?>
   <?php if (!empty($esPaciente)): ?>
-    <p class="suave">¿Para quién es la cita?</p>
+    <h3 class="pregunta-paso">¿Para quién es la cita?</h3>
     <div class="opciones-paciente">
+      <form method="post" action="?r=citas/para-mi">
+        <?= campoCsrf() ?>
+        <button class="tarjeta-paciente">
+          <strong>Para mí</strong>
+          <small class="suave"><?= e(Sesion::usuario()['nombre'] ?? '') ?></small>
+        </button>
+      </form>
       <?php foreach ($beneficiarios as $b): ?>
         <a class="tarjeta-paciente" href="?<?= e(http_build_query(['r' => 'citas/nueva', 'paciente_id' => $b['persona_id'], 'fecha' => $p['fecha']])) ?>">
           <strong><?= e($b['nombres'] . ' ' . $b['apellidos']) ?></strong>
-          <small><?= (int) $b['persona_id'] === (int) (Sesion::usuario()['persona_id'] ?? 0) ? 'Para mí' : 'Familiar a mi cargo' ?></small>
-          <small class="suave">CI <?= e($b['ci']) ?> · <?= e($b['nro_expediente']) ?></small>
+          <small class="suave"><?= preg_match('/-\d+$/', (string) $b['ci']) ? 'Sin CI' : 'CI ' . e($b['ci']) ?></small>
         </a>
       <?php endforeach; ?>
+      <a class="tarjeta-paciente nueva" href="?r=citas/otra-persona">
+        <strong>+ Para otra persona</strong>
+        <small class="suave">Hijo, familiar u otra persona</small>
+      </a>
     </div>
-    <p class="suave">¿La cita es para otra persona? Solicite en recepción que la vinculen a su cuenta como familiar.</p>
   <?php else: ?>
   <form class="filtros" method="get">
     <input type="hidden" name="r" value="citas/nueva">

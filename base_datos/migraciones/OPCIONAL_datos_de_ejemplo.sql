@@ -7,7 +7,8 @@
 -- =====================================================================================
 INSERT INTO aseguradora (nombre) VALUES
  ('Caja Nacional de Salud'), ('Seguro Universitario (SSU)'), ('Nacional Seguros'),
- ('Alianza Seguros'), ('Seguros Illimani');
+ ('Alianza Seguros'), ('Seguros Illimani')
+ON CONFLICT (nombre) DO NOTHING;   -- la migración 09 ya pudo crear algunas
 
 INSERT INTO especialidad (nombre, descripcion, costo_consulta, edad_minima, edad_maxima, sexo_permitido) VALUES
  ('Medicina General', 'Atención primaria y control general',            80.00,  0, NULL, 'A'),
@@ -93,7 +94,7 @@ SELECT p.id, r.id, v.correo, '$2y$10$RLV.AlqeqC0sbobwgG0q6.Twz.EoPQI..Knx7C0MIld
    ('3000008','MEDICO','gonzalo.aliaga@clinicavidasalud.com'),
    ('3000009','MEDICO','mariela.rivero@clinicavidasalud.com'),
    ('3000010','MEDICO','walter.apaza@clinicavidasalud.com'),
-   ('4500003','PACIENTE','teresa.apaza@correo.com'),
+   ('4500017','PACIENTE','carla.villarroel@correo.com'),   -- mamá de un niño de 2023 (CU22)
    ('4500011','PACIENTE','monica.fernandez@correo.com'),
    ('4500013','PACIENTE','fabiola.condori@correo.com'),
    ('4500021','PACIENTE','sofia.rivero@correo.com'),
@@ -385,7 +386,8 @@ INSERT INTO tipo_examen (nombre, descripcion, costo) VALUES
  ('Radiografía de tórax',      'Imagen del tórax',                         120.00),
  ('Electrocardiograma',        'Actividad eléctrica del corazón',           90.00),
  ('Ecografía abdominal',       'Imagen por ultrasonido del abdomen',       150.00),
- ('Prueba de embarazo',        'Detección de hCG en sangre',                35.00);
+ ('Prueba de embarazo',        'Detección de hCG en sangre',                35.00)
+ON CONFLICT DO NOTHING;   -- la migración 09 ya pudo crear algunos
 
 INSERT INTO vinculo_familiar (paciente_id, familiar_id, parentesco)
 SELECT t.id, f.id, v.par
@@ -394,7 +396,8 @@ SELECT t.id, f.id, v.par
                ('4500034','4500032','HERMANO')) AS v(ci_t, ci_f, par)
   JOIN persona t ON t.ci = v.ci_t JOIN persona f ON f.ci = v.ci_f;
 
-INSERT INTO pregunta_frecuente (categoria, pregunta, respuesta, palabras_clave) VALUES
+INSERT INTO pregunta_frecuente (categoria, pregunta, respuesta, palabras_clave)
+SELECT v.* FROM (VALUES
  ('CITAS',    '¿Cómo agendo una cita médica?', 'Ingrese al sistema, elija "Agendar cita", seleccione especialidad, médico y un horario disponible.', 'agendar cita reservar turno'),
  ('CITAS',    '¿Puedo cancelar o reprogramar mi cita?', 'Sí, hasta 24 horas antes desde "Mis citas" o llamando a recepción.', 'cancelar reprogramar cambiar cita'),
  ('CITAS',    '¿Qué pasa si no puedo asistir?', 'Avise con anticipación. Las inasistencias repetidas pueden limitar nuevas reservas.', 'inasistencia faltar no asistir'),
@@ -406,7 +409,9 @@ INSERT INTO pregunta_frecuente (categoria, pregunta, respuesta, palabras_clave) 
  ('CUENTA',   '¿Olvidé mi contraseña, qué hago?', 'En la pantalla de inicio pulse "¿Olvidó su contraseña?" y siga el enlace que llegará a su correo.', 'contraseña olvidé recuperar clave'),
  ('CUENTA',   '¿Por qué mi cuenta está bloqueada?', 'Tras varios intentos fallidos se bloquea unos minutos. Espere o recupere su contraseña.', 'bloqueada cuenta intentos'),
  ('GENERAL',  '¿Cuál es el horario de atención?', 'Lunes a viernes de 08:00 a 19:00 y sábados de 08:00 a 13:00.', 'horario atención abierto'),
- ('GENERAL',  '¿Dónde está la clínica?', 'Contamos con atención en La Paz, Bolivia. Consulte la dirección exacta en recepción.', 'dirección ubicación donde');
+ ('GENERAL',  '¿Dónde está la clínica?', 'Contamos con atención en La Paz, Bolivia. Consulte la dirección exacta en recepción.', 'dirección ubicación donde')
+) AS v(categoria, pregunta, respuesta, palabras_clave)
+WHERE NOT EXISTS (SELECT 1 FROM pregunta_frecuente f WHERE lower(f.pregunta) = lower(v.pregunta));
 
 DO $$
 DECLARE

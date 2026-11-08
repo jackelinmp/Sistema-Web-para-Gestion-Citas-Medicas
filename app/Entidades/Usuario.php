@@ -146,4 +146,22 @@ final class Usuario extends EntidadBase
         $this->bd->prepare('UPDATE usuario SET estado = :estado WHERE id = :id')
                  ->execute(['estado' => $estado, 'id' => $id]);
     }
+
+    /** Mi perfil: correo de la cuenta y si acepta avisos por WhatsApp (columna de la migración 11). */
+    public function actualizarPreferencias(int $id, string $correo, ?bool $avisosWhatsapp): void
+    {
+        if ($avisosWhatsapp === null) {
+            $this->bd->prepare('UPDATE usuario SET correo = :c WHERE id = :id')->execute(['c' => $correo, 'id' => $id]);
+            return;
+        }
+        $this->bd->prepare('UPDATE usuario SET correo = :c, avisos_whatsapp = :w WHERE id = :id')
+                 ->execute(['c' => $correo, 'w' => $avisosWhatsapp ? 'true' : 'false', 'id' => $id]);
+    }
+
+    public function aceptaWhatsapp(int $id): bool
+    {
+        $st = $this->bd->prepare('SELECT avisos_whatsapp FROM usuario WHERE id = :id');
+        $st->execute(['id' => $id]);
+        return (bool) $st->fetchColumn();
+    }
 }

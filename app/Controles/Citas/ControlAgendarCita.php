@@ -2,7 +2,6 @@
 namespace App\Controles\Citas;
 
 use App\Controles\Comunicacion\ControlGestionarNotificaciones;
-
 use App\Controles\Pacientes\ControlValidarRestricciones;
 use App\Entidades\Bitacora;
 use App\Entidades\Cita;
@@ -19,6 +18,7 @@ use App\Nucleo\Sesion;
  * Interfaces: IUAgendarCita.  Entidades: Paciente, Especialidad, Medico, Cita, Pago, Bitacora.
  * Incluye («include»): CU06 ControlValidarRestricciones y CU13 ControlVerificarDisponibilidad.
  * Asistente de 4 pasos por parámetros GET: paciente_id -> especialidad_id + fecha (+ medico_id) -> cupo -> confirmar.
+ * Usuario paciente, paso 1 «¿Para quién es la cita?»: «Para mí» (seleccionarParaMi) o «Para otra persona» (CU22).
  */
 final class ControlAgendarCita extends ControlBase
 {
@@ -39,9 +39,10 @@ final class ControlAgendarCita extends ControlBase
                   'esPaciente' => $this->esPaciente(), 'beneficiarios' => []];
 
         if (!$p['paciente_id']) {                                   // paso 1
-            if ($this->esPaciente()) {                              // ¿para quién es la cita?
+            if ($this->esPaciente()) {                              // ¿para quién es la cita? «Para mí», las personas ya agregadas y «Para otra persona»
+                $propio = (int) Sesion::usuario()['persona_id'];
                 foreach ($this->pacientesACargo() as $id) {
-                    if ($fila = (new Paciente())->obtenerPorId($id)) {
+                    if ($id !== $propio && ($fila = (new Paciente())->obtenerPorId($id))) {
                         $datos['beneficiarios'][] = $fila;
                     }
                 }
@@ -78,6 +79,25 @@ final class ControlAgendarCita extends ControlBase
             $datos['resumen'] = $this->mostrarResumen($p);
         }
         $this->vista('Citas/IUAgendarCita', $datos);
+    }
+
+    /**
+     * «Para mí»: el usuario reserva para sí mismo. Si todavía no es paciente (tiene cuenta solo para
+     * manejar las citas de sus hijos), se abre su expediente en este momento.
+     */
+    public function seleccionarParaMi(): void
+    {
+        Sesion::exigirPermiso(self::MODULO, 'R');
+        if (!$this->esPaciente()) {
+            $this->redirigir('citas/nueva');
+        }
+        $propio = (int) Sesion::usuario()['persona_id'];
+        if (!(new Paciente())->obtenerPorId($propio)) {
+            $expediente = Conexion::transaccion(fn() => (new Paciente())->abrirExpediente($propio));
+            (new Bitacora())->registrarEvento($this->idUsuario(), 'ABRIR_EXPEDIENTE', 'Expediente ' . $expediente . ' abierto al reservar en línea',
+                                              $this->ip(), 'paciente', $propio);
+        }
+        $this->redirigir('citas/nueva&paciente_id=' . $propio);
     }
 
     /** Resumen antes de confirmar: paciente, especialidad, médico, fecha, hora y costo. */

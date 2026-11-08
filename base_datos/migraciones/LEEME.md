@@ -12,12 +12,14 @@ Se aplican en orden numérico:
 | `01_ciclo2_estados_cita.sql` | CU15, CU17 | `sp_cambiar_estado_cita` acepta `PROGRAMADA → INASISTENCIA` y agrega el permiso `CITAS/M` |
 | `02_ciclo2_grupo1.sql` | CU16, CU18, CU24, CU25, CU26 | funciones `sp_reprogramar_cita`, vista de detalle, permisos de COMUNICACION y tablas de soporte |
 | `03_ciclo2_copago_seguro.sql` | CU19 | copago con seguro médico y datos de póliza |
-| `04_pre_registro_paciente.sql` | CU05 | pre-registro simple de pacientes |
+| `04_pre_registro_paciente.sql` | CU05 | estado `PRE_REGISTRADO` (ya no lo usa el código; si ya la aplicó, no pasa nada) |
 | `06_tutor_dependientes.sql` | CU22 | `persona.tutor_id` para dependientes |
 | `07_resultado_archivo.sql` | CU23 | archivo adjunto del resultado de laboratorio |
 | `08_preguntas_frecuentes_base.sql` | CU26 | preguntas frecuentes iniciales del asistente |
 | `09_catalogos_base.sql` | CU05, CU19, CU23 | aseguradoras y tipos de examen sin pantalla de alta |
 | `10_permisos_ciclo2.sql` | RBAC | permisos de PAGOS, EXAMENES, REPORTES y COMUNICACION para los 4 roles |
+| `11_avisos_whatsapp.sql` | CU24 | `usuario.avisos_whatsapp`: el titular elige en «Mi perfil» si recibe los avisos también por WhatsApp |
+| `12_responsable_sin_expediente.sql` | CU01, CU22 | `vinculo_familiar.paciente_id` apunta a `persona`: un padre con cuenta no necesita ser paciente |
 
 > No existe la `05`: era la verificación por OTP, que se retiró por costo. Si alguna vez
 > se ejecutó, se puede borrar la tabla con `DROP TABLE IF EXISTS otp_verificacion;`.
@@ -31,6 +33,15 @@ Se aplican en orden numérico:
    y son idempotentes: se pueden ejecutar dos veces sin romper nada.
 
 ## Verificación
+
+Después de la `11`:
+
+```sql
+-- Debe devolver una fila (boolean, por defecto false)
+SELECT data_type, column_default FROM information_schema.columns
+ WHERE table_name = 'usuario' AND column_name = 'avisos_whatsapp';
+```
+
 
 Después de la `10`:
 

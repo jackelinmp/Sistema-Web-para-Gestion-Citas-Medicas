@@ -63,7 +63,7 @@ $iniciales = $usuario ? mb_strtoupper(mb_substr(preg_replace('/[^\p{L} ]/u', '',
 
     <div class="menu-usuario">
       <span class="avatar"><?= e($iniciales) ?></span>
-      <span class="menu-usuario-datos"><strong><?= e($usuario['nombre']) ?></strong><small><?= e($usuario['rol']) ?></small></span>
+      <a class="menu-usuario-datos" href="?r=perfil" title="Mi perfil"><strong><?= e($usuario['nombre']) ?></strong><small>Mi perfil · <?= e(ucfirst(strtolower($usuario['rol']))) ?></small></a>
       <form method="post" action="?r=sesion/cerrar"><?= campoCsrf() ?>
         <button class="btn-icono" title="Cerrar sesión" aria-label="Cerrar sesión"><?= icono('salir') ?></button>
       </form>
@@ -92,7 +92,7 @@ $iniciales = $usuario ? mb_strtoupper(mb_substr(preg_replace('/[^\p{L} ]/u', '',
           <?= icono('microfono', 18) ?><span>Voz</span>
         </button>
         <span class="rol-chip"><?= e($usuario['rol']) ?></span>
-        <a class="btn-enlace enlace-barra" href="?r=sesion/cambiar">Cambiar contraseña</a>
+        <a class="btn-enlace enlace-barra" href="?r=perfil">Mi perfil</a>
       <?php else: ?>
         <strong>Clínica Vida Salud</strong>
       <?php endif; ?>
