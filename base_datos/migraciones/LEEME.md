@@ -10,6 +10,17 @@ Se aplican en orden numérico:
 | Archivo | CU | Qué cambia |
 |---|---|---|
 | `01_ciclo2_estados_cita.sql` | CU15, CU17 | `sp_cambiar_estado_cita` acepta `PROGRAMADA → INASISTENCIA` y agrega el permiso `CITAS/M` |
+| `02_ciclo2_grupo1.sql` | CU16, CU18, CU24, CU25, CU26 | funciones `sp_reprogramar_cita`, vista de detalle, permisos de COMUNICACION y tablas de soporte |
+| `03_ciclo2_copago_seguro.sql` | CU19 | copago con seguro médico y datos de póliza |
+| `04_pre_registro_paciente.sql` | CU05 | pre-registro simple de pacientes |
+| `06_tutor_dependientes.sql` | CU22 | `persona.tutor_id` para dependientes |
+| `07_resultado_archivo.sql` | CU23 | archivo adjunto del resultado de laboratorio |
+| `08_preguntas_frecuentes_base.sql` | CU26 | preguntas frecuentes iniciales del asistente |
+| `09_catalogos_base.sql` | CU05, CU19, CU23 | aseguradoras y tipos de examen sin pantalla de alta |
+| `10_permisos_ciclo2.sql` | RBAC | permisos de PAGOS, EXAMENES, REPORTES y COMUNICACION para los 4 roles |
+
+> No existe la `05`: era la verificación por OTP, que se retiró por costo. Si alguna vez
+> se ejecutó, se puede borrar la tabla con `DROP TABLE IF EXISTS otp_verificacion;`.
 
 ## Cómo aplicar una migración
 
@@ -20,6 +31,21 @@ Se aplican en orden numérico:
    y son idempotentes: se pueden ejecutar dos veces sin romper nada.
 
 ## Verificación
+
+Después de la `10`:
+
+```sql
+-- Debe listar C y R, y también los módulos del Ciclo 2
+SELECT modulo, accion FROM permiso ORDER BY modulo, accion;
+
+-- El paciente debe tener PAGOS C/R (si no, CU14 no puede cobrar)
+SELECT p.modulo, p.accion
+  FROM rol r
+  JOIN rol_permiso rp ON rp.rol_id = r.id
+  JOIN permiso p ON p.id = rp.permiso_id
+ WHERE r.nombre = 'PACIENTE'
+ ORDER BY p.modulo, p.accion;
+```
 
 Después de la `01`:
 

@@ -31,11 +31,23 @@ final class ControlAgendarCita extends ControlBase
         Sesion::exigirPermiso(self::MODULO, 'R');
         $disp = new ControlVerificarDisponibilidad();
         $p = $this->leerParametros($_GET);
+        if ($this->esPaciente() && empty($_GET['paciente_id'])) {
+            $p['paciente_id'] = null;                               // paso 1: ¿para quién es la cita?
+        }
         $datos = ['p' => $p, 'pacientes' => [], 'paciente' => null, 'especialidades' => [], 'medicos' => [],
-                  'cupos' => null, 'resumen' => null, 'error' => null];
+                  'cupos' => null, 'resumen' => null, 'error' => null,
+                  'esPaciente' => $this->esPaciente(), 'beneficiarios' => []];
 
         if (!$p['paciente_id']) {                                   // paso 1
-            $datos['pacientes'] = $p['criterio'] !== '' ? (new Paciente())->buscar($p['criterio']) : [];
+            if ($this->esPaciente()) {                              // ¿para quién es la cita?
+                foreach ($this->pacientesACargo() as $id) {
+                    if ($fila = (new Paciente())->obtenerPorId($id)) {
+                        $datos['beneficiarios'][] = $fila;
+                    }
+                }
+            } else {
+                $datos['pacientes'] = $p['criterio'] !== '' ? (new Paciente())->buscar($p['criterio']) : [];
+            }
             $this->vista('Citas/IUAgendarCita', $datos);
             return;
         }
@@ -136,10 +148,7 @@ final class ControlAgendarCita extends ControlBase
         if (!$cita) {
             $this->redirigir('citas/nueva');
         }
-        $u = Sesion::usuario();
-        if ($u['rol'] === 'PACIENTE' && (int) $cita['paciente_id'] !== (int) $u['persona_id']) {
-            Sesion::denegar('Intento de ver la cita ' . (int) $cita['id'] . ' de otro paciente');
-        }
+        $this->exigirAccesoPaciente(self::MODULO, (int) $cita['paciente_id']);
         $this->vista('Citas/IUConstanciaCita', ['cita' => $cita]);
     }
 
@@ -147,8 +156,9 @@ final class ControlAgendarCita extends ControlBase
     {
         $usuario = Sesion::usuario();
         $pacienteId = (int) ($origen['paciente_id'] ?? 0) ?: null;
-        if (($usuario['rol'] ?? '') === 'PACIENTE') {               // el paciente solo agenda para sí mismo
-            $pacienteId = (int) $usuario['persona_id'];
+        if (($usuario['rol'] ?? '') === 'PACIENTE') {               // el paciente agenda para sí o para un familiar (CU22)
+            $aCargo = $this->pacientesACargo() ?? [];
+            $pacienteId = in_array($pacienteId, $aCargo, true) ? $pacienteId : (int) $usuario['persona_id'];
         }
         $rol = $usuario['rol'] ?? '';
         $origenCita = self::ORIGEN[$rol] ?? 'RECEPCION';

@@ -11,8 +11,8 @@
 <p class="suave">Ingrese con la cuenta que le entregó la clínica.</p>
 <form method="post" action="?r=sesion/iniciar" class="formulario">
   <?= campoCsrf() ?>
-  <label>Correo electrónico
-    <input type="email" name="correo" value="<?= e($correo) ?>" required autofocus autocomplete="username">
+  <label>Correo electrónico o CI
+    <input type="text" name="correo" value="<?= e($correo) ?>" required autofocus autocomplete="username" placeholder="correo@ejemplo.com o 12345678">
   </label>
   <label>Contraseña
     <span class="campo-clave">

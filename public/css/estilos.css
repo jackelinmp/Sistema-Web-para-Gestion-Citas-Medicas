@@ -206,6 +206,10 @@ small, .suave { color: var(--texto-suave); font-size: var(--t-chico); }
 .pasos li.hecho { background: var(--primario-claro); color: var(--primario-osc); }
 .cupos { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: var(--esp-2); }
 .cupo { padding: var(--esp-2); text-align: center; border: 1px solid var(--primario); border-radius: 9px; background: #fff; color: var(--primario-osc); cursor: pointer; font: inherit; }
+.opciones-paciente { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--esp-3); margin: 0 0 var(--esp-4); }
+.tarjeta-paciente { display: flex; flex-direction: column; gap: 2px; padding: var(--esp-4); border: 1px solid var(--borde); border-radius: var(--radio-g); background: var(--superficie); box-shadow: var(--sombra); text-decoration: none; color: var(--texto); }
+.tarjeta-paciente:hover { border-color: var(--primario); box-shadow: 0 0 0 2px var(--primario-claro); }
+.tarjeta-paciente small { color: var(--texto-suave); }
 .cupo:hover, .cupo.elegido { background: var(--primario); color: #fff; }
 .cupo:disabled { border-color: var(--borde); color: var(--texto-suave); background: var(--superficie-2); cursor: not-allowed; }
 a.cupo { display: block; text-decoration: none; }

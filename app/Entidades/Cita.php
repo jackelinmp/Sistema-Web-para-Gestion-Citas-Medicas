@@ -120,20 +120,31 @@ final class Cita extends EntidadBase
 
     /**
      * CU16: citas activas desde hoy (Programada o Confirmada).
-     * $pacienteId limita a un paciente (el rol PACIENTE solo ve las suyas); $criterio busca por paciente, CI o cÃ³digo.
+     * $pacienteId limita a un paciente o lista (el rol PACIENTE ve las suyas y las de su grupo familiar); $criterio busca por paciente, CI o cÃ³digo.
      */
-    public function listarProximas(?int $pacienteId, string $criterio = ''): array
+    public function listarProximas(int|array|null $pacienteId, string $criterio = ''): array
     {
+        $filtro = '';
+        $params = ['c' => $criterio, 'l1' => '%' . $criterio . '%', 'l2' => '%' . $criterio . '%', 'l3' => '%' . $criterio . '%'];
+        if (is_array($pacienteId)) {
+            $ids = array_values(array_unique(array_map('intval', $pacienteId)));
+            $filtro = $ids ? ' AND paciente_id IN (' . implode(',', $ids) . ')' : ' AND FALSE';
+            $params['p'] = null;
+            $params['p2'] = null;
+        } else {
+            $params['p'] = $pacienteId;
+            $params['p2'] = $pacienteId;
+        }
         $st = $this->bd->prepare("SELECT id, codigo, fecha, hora_inicio, hora_fin, estado, paciente, paciente_ci, medico,
                                          especialidad, pago_estado, veces_reprogramada
                                     FROM vw_citas_detalle
                                    WHERE estado IN ('PROGRAMADA', 'CONFIRMADA') AND fecha >= current_date
                                      AND (CAST(:p AS bigint) IS NULL OR paciente_id = :p2)
                                      AND (CAST(:c AS text) = '' OR paciente ILIKE :l1 OR paciente_ci ILIKE :l2 OR codigo ILIKE :l3)
+                                     $filtro
                                    ORDER BY fecha, hora_inicio
                                    LIMIT 100");
-        $like = '%' . $criterio . '%';
-        $st->execute(['p' => $pacienteId, 'p2' => $pacienteId, 'c' => $criterio, 'l1' => $like, 'l2' => $like, 'l3' => $like]);
+        $st->execute($params);
         return $st->fetchAll();
     }
 

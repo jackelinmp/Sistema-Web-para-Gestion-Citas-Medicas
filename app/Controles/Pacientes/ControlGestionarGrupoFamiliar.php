@@ -3,6 +3,7 @@ namespace App\Controles\Pacientes;
 
 use App\Entidades\Bitacora;
 use App\Entidades\Paciente;
+use App\Entidades\Persona;
 use App\Entidades\VinculoFamiliar;
 use App\Nucleo\Conexion;
 use App\Nucleo\ControlBase;
@@ -63,6 +64,8 @@ final class ControlGestionarGrupoFamiliar extends ControlBase
         }
         Conexion::transaccion(function () use ($vinculos, $titular, $familiar, $parentesco) {
             $id = $vinculos->insertar((int) $titular['persona_id'], (int) $familiar['persona_id'], $parentesco);
+            // Sincroniza persona.tutor_id para que los avisos del menor lleguen a la cuenta del titular (CU24).
+            (new Persona())->actualizarTutor((int) $familiar['persona_id'], (int) $titular['persona_id']);
             (new Bitacora())->registrarEvento($this->idUsuario(), 'AGREGAR_FAMILIAR',
                                               'Familiar ' . $familiar['nro_expediente'] . ' a cargo de ' . $titular['nro_expediente'],
                                               $this->ip(), 'vinculo_familiar', $id);
@@ -81,6 +84,10 @@ final class ControlGestionarGrupoFamiliar extends ControlBase
         }
         Conexion::transaccion(function () use ($vinculos, $vinculo) {
             $vinculos->eliminar((int) $vinculo['id']);
+            // Recalcula el tutor del dependiente: otro titular del grupo, o ninguno.
+            $restantes = $vinculos->listarTitulares((int) $vinculo['familiar_id']);
+            (new Persona())->actualizarTutor((int) $vinculo['familiar_id'],
+                $restantes ? (int) $restantes[0]['titular_id'] : null);
             (new Bitacora())->registrarEvento($this->idUsuario(), 'QUITAR_FAMILIAR',
                                               'Familiar ' . $vinculo['familiar_id'] . ' quitado del titular ' . $vinculo['titular_id'],
                                               $this->ip(), 'vinculo_familiar', (int) $vinculo['id']);

@@ -34,6 +34,9 @@ Destinado a: secciones 7 (Implementación) y 8 (Pruebas) del informe.
 | CU19 | Pago en línea (Stripe) | `pagos`, `pagos/detalle`, `pagos/iniciar`, `pagos/retorno`, `pagos/cancelado`, `pagos/webhook`, `pagos/seguro`, `pagos/comprobante` | `ControlProcesarPago` | Pago, Cita, Bitacora, ServicioStripe, PdfSimple | PAGOS C/R |
 
 ### Cambios relevantes en Ciclo 1
+- `ControlIniciarSesion::iniciarSesion()` acepta **correo o CI** como usuario (misma contraseña y mismo bloqueo por intentos).
+- `ControlIniciarSesion::ingresarExistente()` revalida `persona_id + CI + fecha de nacimiento` antes de crear/abrir la cuenta (la Puerta A ya no confía en el `persona_id` del formulario).
+- `ControlAgendarCita` muestra **¿Para quién es la cita?** al rol PACIENTE (él mismo o un familiar de su grupo, CU22); el pago y la constancia aceptan al familiar.
 - `ControlAgendarCita::leerParametros()` ahora incluye la clave `origen` (evita notice en `IUAgendarCita`).
 - `ControlAgendarCita::confirmarCita()` redirige a `pagos/detalle` (pago obligatorio al reservar).
 - `ControlProcesarPago` agregó `registrarPagoManual()` para efectivo/QR/transferencia.
@@ -68,7 +71,7 @@ Destinado a: secciones 7 (Implementación) y 8 (Pruebas) del informe.
 - **Interfaces:** `IUMisCitas`, `IUReprogramarCita`
 - **Entidades:** Cita, Medico, ParametroSistema, Bitacora
 - **Permiso:** CITAS R
-- **Reglas:** solo citas Programadas/Confirmadas que no empezaron; paciente con 24 h de anticipación y máximo 2 reprogramaciones; cancelar exige motivo; pago pendiente se anula, pagado queda reembolsado.
+- **Reglas:** solo citas Programadas/Confirmadas que no empezaron; el paciente ve y gestiona las suyas y las de su grupo familiar (CU22); 24 h de anticipación y máximo 2 reprogramaciones; cancelar exige motivo; pago pendiente se anula, pagado queda reembolsado.
 - **Corrección:** llamada a `notificarEventos()` (inexistente) reemplazada por `notificarCita()` con tipo de evento.
 
 #### CU18 — Reportes operativos
@@ -140,7 +143,8 @@ Destinado a: secciones 7 (Implementación) y 8 (Pruebas) del informe.
 - **Rutas:** `grupo-familiar`, `grupo-familiar/agregar`, `grupo-familiar/quitar`
 - **Control:** `ControlGestionarGrupoFamiliar`
 - **Interfaz:** `IUGrupoFamiliar`
-- **Entidades:** Paciente, VinculoFamiliar, Bitacora
+- **Entidades:** Paciente, VinculoFamiliar, Persona, Bitacora
+- **Efecto:** al vincular un familiar se sincroniza `persona.tutor_id` (avisos al tutor); al quitarlo se recalcula el tutor restante. El titular puede agendar, reprogramar, cancelar y pagar las citas de sus familiares.
 
 #### CU23 — Resultados de laboratorio
 - **Rutas:** `laboratorio`, `laboratorio/solicitar`, `laboratorio/solicitar/guardar`, `laboratorio/en-proceso`, `laboratorio/formulario`, `laboratorio/guardar`, `laboratorio/entregar`, `laboratorio/cancelar`, `laboratorio/archivo`
@@ -153,7 +157,8 @@ Destinado a: secciones 7 (Implementación) y 8 (Pruebas) del informe.
 ## 4. Cambios transversales
 
 ### Autenticación (Puerta A y B)
-- **Puerta A** (`sesion/existente`): paciente existente entra con CI + fecha de nacimiento. Si tiene cuenta, pide contraseña; si no, crea cuenta en el momento.
+- **Login** (`sesion/formulario`): usuario = correo **o CI**, con contraseña. Mismo bloqueo 3 intentos / 15 min y recuperación por correo.
+- **Puerta A** (`sesion/existente`): paciente existente entra con CI + fecha de nacimiento. Si tiene cuenta, pide contraseña; si no, crea cuenta en el momento. El servidor revalida CI + fecha antes de operar (corrige un intento de crear cuentas sobre expedientes ajenos).
 - **Puerta B** (`sesion/registro`): paciente nuevo se registra con todos los datos y se crea cuenta inmediatamente.
 - **Pre-registro simple** (`sesion/pre-registro`): paciente ingresa CI + fecha nacimiento + teléfono; recepción activa el expediente desde `pacientes/pre-registrados`.
 - **Perfil** (`perfil`): actualizar teléfono y correo. Cambio de contraseña en `sesion/cambiar`.
@@ -162,8 +167,9 @@ Destinado a: secciones 7 (Implementación) y 8 (Pruebas) del informe.
 - Los ítems bloqueados (por rol o no implementados) **ya no se muestran** en el menú lateral ni en el panel. Solo aparece lo que el usuario puede usar.
 
 ### Dependientes / Tutor
+- `vinculo_familiar` (CU22) es la fuente del grupo familiar; al vincular se copia el titular a `persona.tutor_id`.
 - Migración 06 agrega `tutor_id` a `persona`.
-- Notificaciones (CU24) se envían al tutor si el paciente es menor (no tiene cuenta propia).
+- Notificaciones (CU24) van a la cuenta del tutor: usan `tutor_id` y, si falta, el vínculo familiar con cuenta habilitada.
 
 ### Pagos
 - `ControlAgendarCita::confirmarCita()` redirige a `pagos/detalle` (pago obligatorio al reservar).
@@ -176,10 +182,12 @@ Destinado a: secciones 7 (Implementación) y 8 (Pruebas) del informe.
 - `Config` acepta `DATABASE_URL` como alternativa a `DB_*`.
 
 ### Entidades fusionadas (Grupo 1 + Grupo 2)
-- `Cita`: agregados `listarPorPaciente`, `listarPendientesPorMedico`, `listarEnPeriodo`, `listarParaExamen`, `motivo_cancelacion`, `veces_reprogramada`.
+- `Usuario`: agregado `buscarPorIdentificador` (login por correo o CI).
+- `Persona`: agregado `actualizarTutor` (sincroniza CU22 con las notificaciones).
+- `Cita`: `listarProximas` acepta un paciente o una lista; agregados `listarPorPaciente`, `listarPendientesPorMedico`, `listarEnPeriodo`, `listarParaExamen`, `motivo_cancelacion`, `veces_reprogramada`.
+- `Pago`: `listar` acepta un paciente o una lista; agregado `listarHistorial`, `reportarIngresos`.
 - `Medico`: agregado `cambiarEstado`.
 - `Jornada`: agregado `cerrarVigente`.
-- `Pago`: agregado `listarHistorial`, `reportarIngresos`.
 - `FichaClinica`: agregados `obtenerPorPaciente`, `actualizar`, `CAMPOS`, `TIPOS_SANGRE`.
 - `Persona`: agregados `buscarPorCi`, `obtenerPorId`, `tutor_id`.
 

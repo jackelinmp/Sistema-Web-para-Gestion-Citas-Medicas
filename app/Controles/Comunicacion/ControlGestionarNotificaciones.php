@@ -109,11 +109,19 @@ final class ControlGestionarNotificaciones extends ControlBase
     {
         $bd = Conexion::obtener();
         // Destinatario: la cuenta del paciente o, si es un menor sin cuenta, la de su tutor (CU22).
-        $st = $bd->prepare("SELECT COALESCE(u.id, ut.id)
+        $st = $bd->prepare("SELECT COALESCE(u.id, ut.id, utv.id)
                               FROM cita c
                               JOIN persona pp ON pp.id = c.paciente_id
                               LEFT JOIN usuario u  ON u.persona_id = c.paciente_id AND u.estado = 'HABILITADA'
                               LEFT JOIN usuario ut ON ut.persona_id = pp.tutor_id AND ut.estado = 'HABILITADA'
+                              LEFT JOIN LATERAL (
+                                  SELECT us.id
+                                    FROM vinculo_familiar vf
+                                    JOIN usuario us ON us.persona_id = vf.paciente_id AND us.estado = 'HABILITADA'
+                                   WHERE vf.familiar_id = c.paciente_id
+                                   ORDER BY (vf.paciente_id = pp.tutor_id) DESC, us.id
+                                   LIMIT 1
+                              ) utv ON TRUE
                              WHERE c.id = :c");
         $st->execute(['c' => $citaId]);
         $uid = $st->fetchColumn();

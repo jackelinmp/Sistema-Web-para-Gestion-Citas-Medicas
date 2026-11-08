@@ -23,6 +23,19 @@ $enlace = fn(array $extra) => '?' . e(http_build_query($base + $extra));
 <?php if ($error): ?><div class="alerta error"><?= e($error) ?></div><?php endif; ?>
 
 <?php if ($paso === 1): ?>
+  <?php if (!empty($esPaciente)): ?>
+    <p class="suave">¿Para quién es la cita?</p>
+    <div class="opciones-paciente">
+      <?php foreach ($beneficiarios as $b): ?>
+        <a class="tarjeta-paciente" href="?<?= e(http_build_query(['r' => 'citas/nueva', 'paciente_id' => $b['persona_id'], 'fecha' => $p['fecha']])) ?>">
+          <strong><?= e($b['nombres'] . ' ' . $b['apellidos']) ?></strong>
+          <small><?= (int) $b['persona_id'] === (int) (Sesion::usuario()['persona_id'] ?? 0) ? 'Para mí' : 'Familiar a mi cargo' ?></small>
+          <small class="suave">CI <?= e($b['ci']) ?> · <?= e($b['nro_expediente']) ?></small>
+        </a>
+      <?php endforeach; ?>
+    </div>
+    <p class="suave">¿La cita es para otra persona? Solicite en recepción que la vinculen a su cuenta como familiar.</p>
+  <?php else: ?>
   <form class="filtros" method="get">
     <input type="hidden" name="r" value="citas/nueva">
     <?php foreach (['especialidad_id', 'medico_id', 'hora_inicio', 'origen'] as $k): if ($p[$k]): ?>
@@ -46,6 +59,7 @@ $enlace = fn(array $extra) => '?' . e(http_build_query($base + $extra));
       <?php if (!$pacientes): ?><tr><td colspan="5" class="vacio">No se encontró un paciente con los datos ingresados.</td></tr><?php endif; ?>
       </tbody>
     </table>
+  <?php endif; ?>
   <?php endif; ?>
 
 <?php else: ?>

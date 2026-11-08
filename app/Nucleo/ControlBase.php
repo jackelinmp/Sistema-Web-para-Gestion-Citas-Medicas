@@ -38,6 +38,23 @@ abstract class ControlBase
     }
 
     /**
+     * Ids de los pacientes que el rol PACIENTE puede gestionar: el suyo y los de su grupo familiar (CU22).
+     * Para el personal devuelve null (sin restricción).
+     */
+    protected function pacientesACargo(): ?array
+    {
+        if (!$this->esPaciente()) {
+            return null;
+        }
+        $propio = (int) Sesion::usuario()['persona_id'];
+        $ids = [$propio];
+        foreach ((new \App\Entidades\VinculoFamiliar())->listarFamiliares($propio) as $f) {
+            $ids[] = (int) $f['familiar_id'];
+        }
+        return array_values(array_unique($ids));
+    }
+
+    /**
      * Acceso a los datos de un paciente (CU07, CU20, CU21, CU22, CU23).
      * - Exige el permiso de consulta del módulo.
      * - Paciente: sin $pacienteId devuelve el suyo; con $pacienteId solo acepta el suyo o el de un

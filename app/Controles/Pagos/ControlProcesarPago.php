@@ -27,7 +27,7 @@ final class ControlProcesarPago extends ControlBase
         if (!in_array($f['estado'], ['', 'PENDIENTE', 'PAGADO', 'ANULADO', 'REEMBOLSADO'], true)) {
             $f['estado'] = '';
         }
-        $this->vista('Pagos/IUPagos', ['pagos' => (new Pago())->listar($f['estado'], $this->soloPaciente(), $f['criterio']), 'filtros' => $f]);
+        $this->vista('Pagos/IUPagos', ['pagos' => (new Pago())->listar($f['estado'], $this->pacientesACargo(), $f['criterio']), 'filtros' => $f]);
     }
 
     public function mostrarDetalle(): void
@@ -283,10 +283,7 @@ final class ControlProcesarPago extends ControlBase
             Sesion::flash('error', 'La cita indicada no tiene un pago registrado.');
             $this->redirigir('pagos');
         }
-        $propio = $this->soloPaciente();
-        if ($propio !== null && (int) $pago['paciente_id'] !== $propio) {
-            Sesion::denegar('Intento de ver el pago de la cita ' . $citaId . ' de otro paciente');
-        }
+        $this->exigirAccesoPaciente('PAGOS', (int) $pago['paciente_id']);
         return $pago;
     }
 

@@ -36,16 +36,27 @@ final class Pago extends EntidadBase
         return $st->fetch() ?: null;
     }
 
-    /** Lista de pagos; $soloPaciente limita a un paciente (el rol PACIENTE solo ve los suyos). */
-    public function listar(string $estado, ?int $soloPaciente, string $criterio = ''): array
+    /** Lista de pagos; $soloPaciente limita a un paciente o lista de pacientes (el rol PACIENTE ve los suyos y los de su grupo familiar). */
+    public function listar(string $estado, int|array|null $soloPaciente, string $criterio = ''): array
     {
+        $filtro = '';
+        $params = ['e' => $estado, 'e2' => $estado, 'k' => $criterio,
+                   'k2' => '%' . $criterio . '%', 'k3' => '%' . $criterio . '%'];
+        if (is_array($soloPaciente)) {
+            $ids = array_values(array_unique(array_map('intval', $soloPaciente)));
+            $filtro = $ids ? ' AND c.paciente_id IN (' . implode(',', $ids) . ')' : ' AND FALSE';
+            $params['p'] = null;
+            $params['p2'] = null;
+        } else {
+            $params['p'] = $soloPaciente;
+            $params['p2'] = $soloPaciente;
+        }
         $st = $this->bd->prepare(self::DETALLE . "WHERE (CAST(:e AS text) = '' OR pg.estado = :e2)
                                    AND (CAST(:p AS bigint) IS NULL OR c.paciente_id = :p2)
                                    AND (CAST(:k AS text) = '' OR pp.nombres || ' ' || pp.apellidos ILIKE :k2 OR c.codigo ILIKE :k3)
+                                   $filtro
                                  ORDER BY (pg.estado = 'PENDIENTE') DESC, c.fecha DESC, c.hora_inicio DESC LIMIT 100");
-        $like = '%' . $criterio . '%';
-        $st->execute(['e' => $estado, 'e2' => $estado, 'p' => $soloPaciente, 'p2' => $soloPaciente,
-                      'k' => $criterio, 'k2' => $like, 'k3' => $like]);
+        $st->execute($params);
         return $st->fetchAll();
     }
 

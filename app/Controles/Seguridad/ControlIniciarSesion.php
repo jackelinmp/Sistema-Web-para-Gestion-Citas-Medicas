@@ -40,13 +40,13 @@ final class ControlIniciarSesion extends ControlBase
         $correo = $this->texto('correo');
         $contrasena = (string) ($_POST['contrasena'] ?? '');
         if ($correo === '' || $contrasena === '') {
-            Sesion::flash('error', 'Ingrese su correo y su contraseña.');
+            Sesion::flash('error', 'Ingrese su correo o CI y su contraseña.');
             $this->vista('Seguridad/IUIniciarSesion', ['correo' => $correo], 'publica');
             return;
         }
         $usuarios = new Usuario();
         $bitacora = new Bitacora();
-        $cuenta = $usuarios->buscarPorCorreo($correo);
+        $cuenta = $usuarios->buscarPorIdentificador($correo);
 
         // 1) Cuenta bloqueada temporalmente: no se revisa la contraseña
         if ($cuenta && ($minutos = $usuarios->estaBloqueado($cuenta)) > 0) {
@@ -56,7 +56,7 @@ final class ControlIniciarSesion extends ControlBase
 
         // 2) Contraseña incorrecta: suma un intento y bloquea al llegar al máximo
         if (!$cuenta || !password_verify($contrasena, $cuenta['contrasena_hash'])) {
-            $mensaje = 'Correo o contraseña incorrectos.';
+            $mensaje = 'Correo, CI o contraseña incorrectos.';
             if ($cuenta) {
                 $parametros = new ParametroSistema();
                 $max = (int) $parametros->obtenerValor('INTENTOS_MAX_LOGIN', '3');

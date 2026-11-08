@@ -61,14 +61,22 @@ final class Notificacion extends EntidadBase
     {
         $st = $this->bd->prepare("SELECT c.id, c.codigo, c.fecha, c.hora_inicio, c.estado, c.medico, c.especialidad,
                                          c.pago_estado, c.paciente,
-                                         COALESCE(u.id, ut.id) AS usuario_id
+                                         COALESCE(u.id, ut.id, utv.id) AS usuario_id
                                     FROM vw_citas_detalle c
                                     JOIN persona pp ON pp.id = c.paciente_id
                                     LEFT JOIN persona pt ON pt.id = pp.tutor_id
                                     LEFT JOIN usuario u ON u.persona_id = c.paciente_id AND u.estado = 'HABILITADA'
                                     LEFT JOIN usuario ut ON ut.persona_id = pp.tutor_id AND ut.estado = 'HABILITADA'
+                                    LEFT JOIN LATERAL (
+                                        SELECT us.id
+                                          FROM vinculo_familiar vf
+                                          JOIN usuario us ON us.persona_id = vf.paciente_id AND us.estado = 'HABILITADA'
+                                         WHERE vf.familiar_id = c.paciente_id
+                                         ORDER BY (vf.paciente_id = pp.tutor_id) DESC, us.id
+                                         LIMIT 1
+                                    ) utv ON TRUE
                                    WHERE c.fecha = CAST(:f AS date) AND c.estado IN ('PROGRAMADA', 'CONFIRMADA')
-                                     AND COALESCE(u.id, ut.id) IS NOT NULL
+                                     AND COALESCE(u.id, ut.id, utv.id) IS NOT NULL
                                      AND NOT EXISTS (SELECT 1 FROM notificacion n
                                                        WHERE n.cita_id = c.id AND n.tipo = 'RECORDATORIO')
                                     ORDER BY c.hora_inicio");

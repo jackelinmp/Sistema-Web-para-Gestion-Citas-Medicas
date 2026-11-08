@@ -54,4 +54,11 @@ final class Persona extends EntidadBase
                                    WHERE id = :id');
         $st->execute(array_intersect_key($d, array_flip(self::CAMPOS)) + ['id' => $id]);
     }
+
+    /** CU22: guarda el tutor responsable del dependiente (para enviarle sus notificaciones). */
+    public function actualizarTutor(int $id, ?int $tutorId): void
+    {
+        $this->bd->prepare('UPDATE persona SET tutor_id = :t WHERE id = :id')
+                 ->execute(['t' => $tutorId, 'id' => $id]);
+    }
 }
