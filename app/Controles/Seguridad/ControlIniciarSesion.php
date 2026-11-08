@@ -248,10 +248,19 @@ final class ControlIniciarSesion extends ControlBase
             $this->redirigir('panel');
         }
         $personaId = (int) ($_POST['persona_id'] ?? 0);
+        $ci = $this->texto('ci');
+        $fechaNac = $this->texto('fecha_nacimiento');
+        // Se vuelve a validar el CI y la fecha de nacimiento: el persona_id del formulario no es confiable
+        // (sin esto, cualquiera podria enviar otro id y crear una cuenta sobre un expediente ajeno).
+        if ($personaId <= 0 || $ci === '' || $fechaNac === '') {
+            Sesion::flash('error', 'Datos invalidos.');
+            $this->redirigir('sesion/existente');
+            return;
+        }
         $st = Conexion::obtener()->prepare('SELECT p.id, p.ci, p.nombres, p.apellidos, p.fecha_nacimiento, u.id AS usuario_id, u.contrasena_hash, u.estado, u.correo
                                             FROM persona p LEFT JOIN usuario u ON u.persona_id = p.id
-                                            WHERE p.id = :id');
-        $st->execute(['id' => $personaId]);
+                                            WHERE p.id = :id AND p.ci = :ci AND p.fecha_nacimiento = :fn');
+        $st->execute(['id' => $personaId, 'ci' => $ci, 'fn' => $fechaNac]);
         $persona = $st->fetch() ?: null;
         if (!$persona) {
             Sesion::flash('error', 'Datos invalidos.');
