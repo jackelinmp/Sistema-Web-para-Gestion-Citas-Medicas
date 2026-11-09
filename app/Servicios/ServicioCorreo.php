@@ -9,6 +9,10 @@ use App\Nucleo\Config;
  *   MAIL_HOST=smtp.gmail.com  MAIL_PORT=587  MAIL_USER=cuenta@gmail.com
  *   MAIL_PASS=contraseña_de_aplicacion  MAIL_FROM=cuenta@gmail.com  MAIL_FROM_NAME="Clínica Vida Salud"
  * Si MAIL_HOST está vacío no se envía nada y enviar() devuelve false.
+ *
+ * Alternativa por HTTPS con Brevo (sirve donde los puertos SMTP están bloqueados, como el plan
+ * gratuito de Render): BREVO_API_KEY=xkeysib-...  MAIL_FROM=remitente_verificado_en_brevo
+ * MAIL_FROM_NAME="Clínica Vida Salud". Si BREVO_API_KEY tiene valor, se usa Brevo en lugar de SMTP.
  */
 final class ServicioCorreo
 {
@@ -16,7 +20,7 @@ final class ServicioCorreo
 
     public static function configurado(): bool
     {
-        return (string) Config::obtener('MAIL_HOST') !== '';
+        return (string) Config::obtener('MAIL_HOST') !== '' || (string) Config::obtener('BREVO_API_KEY') !== '';
     }
 
     public function enviarEnlaceRecuperacion(string $correo, string $nombre, string $enlace, int $minutos): bool
@@ -48,6 +52,9 @@ final class ServicioCorreo
     {
         if (!self::configurado()) {
             return false;
+        }
+        if ((string) Config::obtener('BREVO_API_KEY') !== '') {
+            return $this->enviarPorBrevo($para, $asunto, $html);
         }
         try {
             $host = (string) Config::obtener('MAIL_HOST');
@@ -101,6 +108,37 @@ final class ServicioCorreo
                 $this->con = null;
             }
         }
+    }
+
+    /** Envío por la API transaccional de Brevo (HTTPS, puerto 443). */
+    private function enviarPorBrevo(string $para, string $asunto, string $html): bool
+    {
+        $desde = (string) (Config::obtener('MAIL_FROM') ?: Config::obtener('MAIL_USER'));
+        $cuerpo = json_encode([
+            'sender'      => ['name' => (string) (Config::obtener('MAIL_FROM_NAME') ?: 'Clínica Vida Salud'), 'email' => $desde],
+            'to'          => [['email' => $para]],
+            'subject'     => $asunto,
+            'htmlContent' => $html,
+        ]);
+        $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+        $opciones = [
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15, CURLOPT_POST => true, CURLOPT_POSTFIELDS => $cuerpo,
+            CURLOPT_HTTPHEADER => ['api-key: ' . Config::obtener('BREVO_API_KEY'), 'Content-Type: application/json', 'Accept: application/json'],
+        ];
+        // PHP en Windows no trae los certificados raíz: se usa el paquete incluido (igual que con Stripe)
+        if ((string) ini_get('curl.cainfo') === '' && is_file(RAIZ . '/config/cacert.pem')) {
+            $opciones[CURLOPT_CAINFO] = RAIZ . '/config/cacert.pem';
+        }
+        curl_setopt_array($ch, $opciones);
+        $respuesta = curl_exec($ch);
+        $codigo = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+        if ($respuesta === false || $codigo < 200 || $codigo >= 300) {
+            error_log('ServicioCorreo Brevo: ' . ($respuesta === false ? $error : "HTTP $codigo $respuesta"));
+            return false;
+        }
+        return true;
     }
 
     private function orden(string $linea, int $esperado): void

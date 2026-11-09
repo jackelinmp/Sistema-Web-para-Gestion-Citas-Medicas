@@ -25,6 +25,10 @@ services:
         sync: false
       - key: WHATSAPP_PHONE_ID
         sync: false
+      - key: BREVO_API_KEY         # CU24 (opcional): correos por la API de Brevo (HTTPS; el plan gratuito bloquea SMTP)
+        sync: false
+      - key: MAIL_FROM             # remitente verificado en Brevo
+        sync: false
       - key: APP_URL
         sync: false
       - key: DB_HOST
