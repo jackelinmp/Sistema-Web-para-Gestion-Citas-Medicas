@@ -2,6 +2,7 @@
 namespace App\Controles\Pagos;
 
 use App\Entidades\Bitacora;
+use App\Entidades\Cita;
 use App\Entidades\Pago;
 use App\Nucleo\Config;
 use App\Nucleo\Conexion;
@@ -16,7 +17,7 @@ use App\Servicios\ServicioStripe;
  * Actores: Paciente y Recepcionista. Interfaces: IUPagos (lista) e IUDetallePago (detalle y resultado).
  * Flujo: detalle -> iniciarPago (sesión de Stripe Checkout) -> Stripe -> retorno (verifica en el servidor)
  *        y/o webhook (firma verificada) -> en UNA transacción: pago PAGADO + cita CONFIRMADA + comprobante + bitácora.
- * Si se rechaza o se abandona, el pago sigue PENDIENTE y se puede reintentar.
+ * Si se rechaza o se abandona, el pago sigue PENDIENTE y se puede reintentar dentro del plazo (MINUTOS_PLAZO_PAGO).
  */
 final class ControlProcesarPago extends ControlBase
 {
@@ -49,6 +50,7 @@ final class ControlProcesarPago extends ControlBase
     {
         Sesion::exigirPermiso('PAGOS', 'R');
         $citaId = (int) ($_POST['cita_id'] ?? 0);
+        (new Cita())->anularCitasSinPago();          // no se cobra una cita cuyo plazo de pago venció
         $pago = $this->pagoAutorizado($citaId);
         $this->exigirPendiente($pago);
         try {
@@ -97,7 +99,7 @@ final class ControlProcesarPago extends ControlBase
         Sesion::exigirPermiso('PAGOS', 'C');
         $citaId = (int) ($_GET['cita_id'] ?? 0);
         $this->pagoAutorizado($citaId);
-        Sesion::flash('aviso', 'El pago no se completó. La cita sigue pendiente de pago y puede reintentarlo.');
+        Sesion::flash('aviso', 'El pago no se completó. Puede reintentarlo dentro del plazo de pago; si no paga a tiempo, la cita se anula.');
         $this->redirigir('pagos/detalle&cita_id=' . $citaId);
     }
 
@@ -289,6 +291,10 @@ final class ControlProcesarPago extends ControlBase
 
     private function exigirPendiente(array $pago): void
     {
+        if ($pago['pago_estado'] === 'ANULADO' && $pago['cita_estado'] === 'CANCELADA') {
+            Sesion::flash('error', 'El plazo para pagar esta cita venció y la cita se anuló; el horario quedó libre. Agende una nueva cita.');
+            $this->redirigir('pagos/detalle&cita_id=' . (int) $pago['cita_id']);
+        }
         if ($pago['pago_estado'] !== 'PENDIENTE' || $pago['cita_estado'] !== 'PROGRAMADA') {
             Sesion::flash('error', 'Esta cita no tiene pagos pendientes');
             $this->redirigir('pagos/detalle&cita_id=' . (int) $pago['cita_id']);

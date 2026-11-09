@@ -9,6 +9,7 @@ use App\Entidades\Especialidad;
 use App\Entidades\Medico;
 use App\Entidades\Paciente;
 use App\Entidades\Pago;
+use App\Entidades\ParametroSistema;
 use App\Nucleo\Conexion;
 use App\Nucleo\ControlBase;
 use App\Nucleo\Sesion;
@@ -156,7 +157,19 @@ final class ControlAgendarCita extends ControlBase
         (new ControlGestionarNotificaciones())->notificarCita((int) $cita['id'], 'CONFIRMACION', 'Cita registrada',
             'Registramos su cita ' . $cita['codigo'] . ' del ' . date('d/m/Y', strtotime($p['fecha'])) . ' a las '
             . substr((string) $p['hora_inicio'], 0, 5) . '. Complete el pago para confirmarla.');
-        Sesion::flash('ok', 'Cita ' . $cita['codigo'] . ' registrada en estado Programada. Complete el pago para confirmar la reserva.');
+        // La cita se confirma con el pago en el mismo momento (en línea o en ventanilla); el horario se aparta
+        // solo mientras dura el plazo para pagar. Únicamente la cita que saca el médico queda con pago pendiente.
+        $origen = self::ORIGEN[Sesion::usuario()['rol']] ?? 'RECEPCION';
+        if ($origen === 'MEDICO') {
+            Sesion::flash('ok', 'Cita ' . $cita['codigo'] . ' registrada con pago pendiente. El paciente la paga en línea o en recepción.');
+            $this->redirigir('citas/constancia&id=' . (int) $cita['id']);
+        }
+        $minutos = (int) (new ParametroSistema())->obtenerValor('MINUTOS_PLAZO_PAGO', '30');
+        Sesion::flash('ok', $origen === 'PORTAL'
+            ? 'Cita ' . $cita['codigo'] . ' registrada. Pague ahora para confirmarla: tiene ' . $minutos
+              . ' minutos; si no paga, la cita se anula y el horario queda libre.'
+            : 'Cita ' . $cita['codigo'] . ' registrada. Registre el pago ahora para confirmarla; si no se paga en '
+              . $minutos . ' minutos, la cita se anula y el horario queda libre.');
         $this->redirigir('pagos/detalle&cita_id=' . (int) $cita['id']);
     }
 
