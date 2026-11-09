@@ -6,6 +6,8 @@
  * @var array $citas  @var string $criterio  @var bool $esPaciente
  */
 use App\Nucleo\Sesion;
+
+$mostrarPaciente = $mostrarPaciente ?? !$esPaciente;
 ?>
 <div class="encabezado">
   <h2><?= $esPaciente ? 'Mis citas' : 'Reprogramar o cancelar citas' ?></h2>
@@ -22,14 +24,14 @@ use App\Nucleo\Sesion;
 <?php endif; ?>
 
 <div class="tabla-contenedor"><table class="tabla">
-  <thead><tr><th>Fecha</th><th>Código</th><?php if (!$esPaciente): ?><th>Paciente</th><?php endif; ?>
+  <thead><tr><th>Fecha</th><th>Código</th><?php if ($mostrarPaciente): ?><th>Paciente</th><?php endif; ?>
     <th>Especialidad</th><th>Médico</th><th>Estado</th><th>Pago</th><th></th></tr></thead>
   <tbody>
   <?php foreach ($citas as $c): ?>
     <tr>
       <td class="sin-salto"><?= fecha($c['fecha']) ?> <?= hora($c['hora_inicio']) ?></td>
       <td><?= e($c['codigo']) ?></td>
-      <?php if (!$esPaciente): ?><td><?= e($c['paciente']) ?><br><small class="suave">CI <?= e($c['paciente_ci']) ?></small></td><?php endif; ?>
+      <?php if ($mostrarPaciente): ?><td><?= e($c['paciente']) ?><br><small class="suave">CI <?= e($c['paciente_ci']) ?></small></td><?php endif; ?>
       <td><?= e($c['especialidad']) ?></td>
       <td><?= e($c['medico']) ?></td>
       <td><?= insignia($c['estado']) ?><?php if ((int) $c['veces_reprogramada'] > 0): ?><br><small class="suave">Reprogramada <?= (int) $c['veces_reprogramada'] ?> vez/veces</small><?php endif; ?></td>
@@ -37,6 +39,6 @@ use App\Nucleo\Sesion;
       <td><a class="btn pequeno secundario" href="?r=citas/cambiar&amp;id=<?= (int) $c['id'] ?>">Reprogramar o cancelar</a></td>
     </tr>
   <?php endforeach; ?>
-  <?php if (!$citas): ?><tr><td colspan="8" class="vacio">No hay citas próximas<?= $criterio !== '' ? ' para la búsqueda' : '' ?>.</td></tr><?php endif; ?>
+  <?php if (!$citas): ?><tr><td colspan="<?= $mostrarPaciente ? 8 : 7 ?>" class="vacio">No hay citas próximas<?= $criterio !== '' ? ' para la búsqueda' : '' ?>.</td></tr><?php endif; ?>
   </tbody>
 </table></div>

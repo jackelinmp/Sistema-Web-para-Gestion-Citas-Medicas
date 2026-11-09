@@ -94,6 +94,13 @@ use App\Nucleo\Sesion;
   </tbody>
 </table>
 
+<?php
+// El paciente solo abre el historial de los menores a su cargo (los adultos ven el suyo con su propia cuenta).
+$usuarioActual = \App\Nucleo\Sesion::usuario();
+$esCuentaPaciente = ($usuarioActual['rol'] ?? '') === 'PACIENTE';
+$propioId = (int) ($usuarioActual['persona_id'] ?? 0);
+$esMenor = fn($fecha) => $fecha && (new DateTime((string) $fecha))->diff(new DateTime())->y < 18;
+?>
 <?php if ($familiares): ?>
   <h3>Familiares a cargo</h3>
   <table class="tabla">
@@ -101,13 +108,13 @@ use App\Nucleo\Sesion;
     <tbody>
     <?php foreach ($familiares as $f): ?>
       <tr><td><?= e($f['nombre']) ?></td><td><?= e($f['nro_expediente']) ?></td>
-          <td class="acciones"><a href="?r=historial&paciente_id=<?= (int) $f['familiar_id'] ?>">Ver historial</a></td></tr>
+          <td class="acciones"><?php if (!$esCuentaPaciente || $esMenor($f['fecha_nacimiento'] ?? null)): ?><a href="?r=historial&paciente_id=<?= (int) $f['familiar_id'] ?>">Ver historial</a><?php else: ?><span class="suave">Lo ve con su propia cuenta</span><?php endif; ?></td></tr>
     <?php endforeach; ?>
     </tbody>
   </table>
 <?php endif; ?>
 <?php if ($titulares): ?>
   <p class="suave">A cargo de:
-    <?php foreach ($titulares as $i => $t): ?><?= $i ? ', ' : '' ?><a href="?r=historial&amp;paciente_id=<?= (int) $t['titular_id'] ?>"><?= e($t['nombre']) ?></a><?php endforeach; ?>
+    <?php foreach ($titulares as $i => $t): ?><?= $i ? ', ' : '' ?><?php if (!$esCuentaPaciente || (int) $t['titular_id'] === $propioId): ?><a href="?r=historial&amp;paciente_id=<?= (int) $t['titular_id'] ?>"><?= e($t['nombre']) ?></a><?php else: ?><?= e($t['nombre']) ?><?php endif; ?><?php endforeach; ?>
   </p>
 <?php endif; ?>

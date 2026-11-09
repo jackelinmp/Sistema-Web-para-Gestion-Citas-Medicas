@@ -26,49 +26,12 @@ final class ControlGestionarPacientes extends ControlBase
     {
         Sesion::exigirPermiso(self::MODULO, 'C');
         $criterio = trim($_GET['criterio'] ?? '');
-        $estado = in_array($_GET['estado'] ?? '', ['ACTIVO', 'INACTIVO', 'PRE_REGISTRADO'], true) ? $_GET['estado'] : '';
+        $estado = in_array($_GET['estado'] ?? '', ['ACTIVO', 'INACTIVO'], true) ? $_GET['estado'] : '';
         $this->vista('Pacientes/IUPacientes', [
             'pacientes' => (new Paciente())->listarPacientes($criterio, $estado),
             'criterio'  => $criterio,
             'estado'    => $estado,
         ]);
-    }
-
-    /** Lista los pacientes que se pre-registraron desde el portal y aún no fueron validados por recepción. */
-    public function listarPreRegistrados(): void
-    {
-        Sesion::exigirPermiso(self::MODULO, 'C');
-        $this->vista('Pacientes/IUPreRegistrados', [
-            'pacientes' => (new Paciente())->listarPacientes('', 'PRE_REGISTRADO'),
-        ]);
-    }
-
-    /** Recepción valida el carnet real y activa el expediente temporal. */
-    public function activarPaciente(): void
-    {
-        Sesion::exigirPermiso(self::MODULO, 'M');
-        $id = (int) ($_POST['persona_id'] ?? 0);
-        $pacientes = new Paciente();
-        $paciente = $pacientes->obtenerPorId($id);
-        if (!$paciente || $paciente['estado'] !== 'PRE_REGISTRADO') {
-            Sesion::flash('error', 'El paciente no está en estado pre-registrado.');
-            $this->redirigir('pacientes/pre-registrados');
-        }
-        $correo = strtolower(trim((string) ($_POST['correo'] ?? '')));
-        Conexion::transaccion(function () use ($pacientes, $id, $paciente, $correo) {
-            $pacientes->cambiarEstado($id, 'ACTIVO');
-            $bd = Conexion::obtener();
-            $bd->prepare('UPDATE paciente SET telefono_verificado = TRUE, validado_por = :u WHERE persona_id = :id')
-               ->execute(['u' => $this->idUsuario(), 'id' => $id]);
-            if ($correo !== '' && empty($paciente['correo'])) {
-                (new Usuario())->insertar($id, (new Rol())->obtenerIdPorNombre('PACIENTE'), $correo, $paciente['ci']);
-            }
-            (new Bitacora())->registrarEvento($this->idUsuario(), 'ACTIVAR_PACIENTE_PRE_REGISTRADO',
-                                              'Paciente ' . $paciente['nro_expediente'] . ' activado desde pre-registro',
-                                              $this->ip(), 'paciente', $id);
-        });
-        Sesion::flash('ok', 'Paciente activado. Expediente: ' . $paciente['nro_expediente']);
-        $this->redirigir('pacientes/pre-registrados');
     }
 
     public function mostrarFormulario(): void

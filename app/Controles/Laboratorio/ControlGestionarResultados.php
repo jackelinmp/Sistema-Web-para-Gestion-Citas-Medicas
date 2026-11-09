@@ -38,6 +38,9 @@ final class ControlGestionarResultados extends ControlBase
             ]);
             return;
         }
+        if ($this->mostrarSinExpediente($pacienteId, 'Resultados de laboratorio', 'laboratorio')) {
+            return;
+        }
         $this->vista('Laboratorio/IUResultados', [
             'paciente' => $this->obtenerPaciente($pacienteId),
             'examenes' => (new SolicitudExamen())->listarPorPaciente($pacienteId, !$this->esPaciente()),

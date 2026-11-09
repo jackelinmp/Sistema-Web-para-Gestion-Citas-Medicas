@@ -65,7 +65,7 @@ return [
         'paquetes' => [
             ['id' => 'P2', 'titulo' => 'Pacientes', 'items' => [
                 ['cu' => 'CU22', 'texto' => 'Grupo familiar', 'desc' => 'Vincula a un responsable con sus dependientes.',
-                 'ruta' => 'grupo-familiar', 'rutas' => ['grupo-familiar'], 'modulo' => 'PACIENTES', 'accion' => 'C', 'icono' => 'usuarios', 'listo' => true],
+                 'ruta' => 'grupo-familiar', 'rutas' => ['grupo-familiar'], 'modulo' => 'PACIENTES', 'accion' => 'C', 'icono' => 'usuarios', 'listo' => true, 'paciente' => true],
             ]],
             ['id' => 'P3', 'titulo' => 'Especialidades y médicos', 'items' => [
                 ['cu' => 'CU10', 'texto' => 'Dar de baja a médico', 'desc' => 'Baja lógica que conserva el historial.',
@@ -93,9 +93,9 @@ return [
             ]],
             ['id' => 'P8', 'titulo' => 'Historial clínico y laboratorio', 'items' => [
                 ['cu' => 'CU07', 'texto' => 'Historial del paciente', 'desc' => 'Citas y atenciones anteriores del paciente.',
-                 'ruta' => 'historial', 'rutas' => ['historial'], 'modulo' => 'PACIENTES', 'accion' => 'C', 'icono' => 'libro', 'listo' => true],
+                 'ruta' => 'historial', 'rutas' => ['historial'], 'modulo' => 'PACIENTES', 'accion' => 'C', 'icono' => 'libro', 'listo' => true, 'paciente' => true],
                 ['cu' => 'CU21', 'texto' => 'Ficha clínica básica', 'desc' => 'Antecedentes, alergias y datos clínicos.',
-                 'ruta' => 'ficha', 'rutas' => ['ficha'], 'modulo' => 'PACIENTES', 'accion' => 'C', 'icono' => 'paciente', 'listo' => true],
+                 'ruta' => 'ficha', 'rutas' => ['ficha'], 'modulo' => 'PACIENTES', 'accion' => 'C', 'icono' => 'paciente', 'listo' => true, 'paciente' => true],
                 ['cu' => 'CU23', 'texto' => 'Resultados de laboratorio', 'desc' => 'Carga y descarga de resultados de exámenes.',
                  'ruta' => 'laboratorio', 'rutas' => ['laboratorio'], 'modulo' => 'EXAMENES', 'accion' => 'C', 'icono' => 'frasco', 'listo' => true],
             ]],

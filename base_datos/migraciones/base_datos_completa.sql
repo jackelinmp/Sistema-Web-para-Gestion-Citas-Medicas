@@ -60,6 +60,7 @@ CREATE TABLE usuario (
     bloqueado_hasta         TIMESTAMPTZ,
     ultimo_acceso           TIMESTAMPTZ,
     debe_cambiar_contrasena BOOLEAN      NOT NULL DEFAULT FALSE,
+    avisos_whatsapp         BOOLEAN      NOT NULL DEFAULT FALSE,   -- CU24: el titular acepta avisos por WhatsApp
     fecha_creacion          TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 CREATE UNIQUE INDEX uq_usuario_correo ON usuario (lower(correo));
@@ -265,7 +266,7 @@ CREATE INDEX idx_notificacion_usuario ON notificacion (usuario_id, leida);
 -- ======================= VÍNCULOS FAMILIARES, EVENTOS (Ciclo 2) =======================
 CREATE TABLE vinculo_familiar (                         -- el titular puede gestionar citas de sus familiares
     id             BIGSERIAL   PRIMARY KEY,
-    paciente_id    BIGINT      NOT NULL REFERENCES paciente(persona_id) ON DELETE CASCADE,   -- titular
+    paciente_id    BIGINT      NOT NULL REFERENCES persona(id) ON DELETE CASCADE,            -- responsable (con cuenta; no necesita expediente)
     familiar_id    BIGINT      NOT NULL REFERENCES paciente(persona_id) ON DELETE CASCADE,
     parentesco     VARCHAR(10) NOT NULL CHECK (parentesco IN ('HIJO', 'PADRE', 'MADRE', 'CONYUGE', 'HERMANO', 'OTRO')),
     fecha_vinculo  TIMESTAMPTZ NOT NULL DEFAULT now(),

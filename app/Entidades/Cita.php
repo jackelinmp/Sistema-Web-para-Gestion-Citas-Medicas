@@ -3,10 +3,10 @@ namespace App\Entidades;
 
 use App\Nucleo\EntidadBase;
 
-/** Â«entityÂ» Cita â€” tabla cita (CU08, CU11, CU13, CU14, CU15, CU16, CU17, CU18). */
+/** «entity» Cita — tabla cita (CU08, CU11, CU13, CU14, CU15, CU16, CU17, CU18). */
 final class Cita extends EntidadBase
 {
-    /** Citas activas a futuro de una especialidad (excepciÃ³n "desactivar con citas programadas" de CU08). */
+    /** Citas activas a futuro de una especialidad (excepción "desactivar con citas programadas" de CU08). */
     public function contarProgramadasPorEspecialidad(int $especialidad_id): int
     {
         $st = $this->bd->prepare("SELECT count(*) FROM cita
@@ -16,7 +16,7 @@ final class Cita extends EntidadBase
         return (int) $st->fetchColumn();
     }
 
-    /** CU13: cupos libres de un mÃ©dico en una fecha (jornada - citas activas - bloqueos - horas pasadas). */
+    /** CU13: cupos libres de un médico en una fecha (jornada - citas activas - bloqueos - horas pasadas). */
     public function cuposDisponibles(int $medico_id, string $fecha): array
     {
         $st = $this->bd->prepare('SELECT hora_inicio, hora_fin FROM fn_cupos_disponibles(:medico, CAST(:fecha AS date))');
@@ -24,7 +24,7 @@ final class Cita extends EntidadBase
         return $st->fetchAll();
     }
 
-    /** CU14: registra la cita en estado PROGRAMADA. Devuelve id y cÃ³digo. */
+    /** CU14: registra la cita en estado PROGRAMADA. Devuelve id y código. */
     public function insertar(array $d): array
     {
         $st = $this->bd->prepare('INSERT INTO cita (paciente_id, medico_id, especialidad_id, fecha, hora_inicio, hora_fin,
@@ -56,25 +56,32 @@ final class Cita extends EntidadBase
     }
 
     /**
-     * CU15/CU17: agenda de una fecha, opcionalmente filtrada por estado y por mÃ©dico.
+     * CU15/CU17: agenda de una fecha, opcionalmente filtrada por estado y por médico.
      * Reutiliza vw_citas_detalle para no repetir los JOIN de paciente y especialidad.
      */
     public function listarAgenda(string $fecha, ?string $estado, ?int $medicoId): array
     {
-        $sql = "SELECT id, codigo, fecha, hora_inicio, hora_fin, estado, paciente, medico_id, medico,
-                       especialidad, motivo_consulta
-                  FROM vw_citas_detalle
-                 WHERE fecha = CAST(:fecha AS date)";
+        // telefono_aviso: celular del paciente o, si no tiene (un menor, un familiar), el de quien saca sus citas.
+        $sql = "SELECT c.id, c.codigo, c.fecha, c.hora_inicio, c.hora_fin, c.estado, c.paciente, c.medico_id, c.medico,
+                       c.especialidad, c.motivo_consulta,
+                       COALESCE(pp.telefono, pt.telefono,
+                                (SELECT tv.telefono FROM vinculo_familiar vf JOIN persona tv ON tv.id = vf.paciente_id
+                                  WHERE vf.familiar_id = c.paciente_id AND tv.telefono IS NOT NULL
+                                  ORDER BY vf.id LIMIT 1)) AS telefono_aviso
+                  FROM vw_citas_detalle c
+                  JOIN persona pp ON pp.id = c.paciente_id
+                  LEFT JOIN persona pt ON pt.id = pp.tutor_id
+                 WHERE c.fecha = CAST(:fecha AS date)";
         $parametros = ['fecha' => $fecha];
         if ($estado !== null && $estado !== '') {
-            $sql .= ' AND estado = :estado';
+            $sql .= ' AND c.estado = :estado';
             $parametros['estado'] = $estado;
         }
         if ($medicoId !== null) {
-            $sql .= ' AND medico_id = :medico';
+            $sql .= ' AND c.medico_id = :medico';
             $parametros['medico'] = $medicoId;
         }
-        $st = $this->bd->prepare($sql . ' ORDER BY hora_inicio');
+        $st = $this->bd->prepare($sql . ' ORDER BY c.hora_inicio');
         $st->execute($parametros);
         return $st->fetchAll();
     }
@@ -91,7 +98,7 @@ final class Cita extends EntidadBase
 
     /**
      * CU15/CU17: cambia el estado con el procedimiento de la base.
-     * Ã‰l valida la transiciÃ³n permitida y registra el evento en la bitÃ¡cora.
+     * Él valida la transición permitida y registra el evento en la bitácora.
      */
     public function cambiarEstado(int $id, string $nuevoEstado, int $usuarioId): void
     {
@@ -100,8 +107,8 @@ final class Cita extends EntidadBase
     }
 
     /**
-     * CU11 flujo alternativo: citas futuras activas del mÃ©dico que quedan fuera de su jornada vigente.
-     * Se llama dentro de la transacciÃ³n, despuÃ©s de guardar la jornada nueva.
+     * CU11 flujo alternativo: citas futuras activas del médico que quedan fuera de su jornada vigente.
+     * Se llama dentro de la transacción, después de guardar la jornada nueva.
      */
     public function contarFueraDeJornada(int $medico_id): int
     {
@@ -120,24 +127,35 @@ final class Cita extends EntidadBase
 
     /**
      * CU16: citas activas desde hoy (Programada o Confirmada).
-     * $pacienteId limita a un paciente (el rol PACIENTE solo ve las suyas); $criterio busca por paciente, CI o cÃ³digo.
+     * $pacienteId limita a un paciente o lista (el rol PACIENTE ve las suyas y las de su grupo familiar); $criterio busca por paciente, CI o código.
      */
-    public function listarProximas(?int $pacienteId, string $criterio = ''): array
+    public function listarProximas(int|array|null $pacienteId, string $criterio = ''): array
     {
+        $filtro = '';
+        $params = ['c' => $criterio, 'l1' => '%' . $criterio . '%', 'l2' => '%' . $criterio . '%', 'l3' => '%' . $criterio . '%'];
+        if (is_array($pacienteId)) {
+            $ids = array_values(array_unique(array_map('intval', $pacienteId)));
+            $filtro = $ids ? ' AND paciente_id IN (' . implode(',', $ids) . ')' : ' AND FALSE';
+            $params['p'] = null;
+            $params['p2'] = null;
+        } else {
+            $params['p'] = $pacienteId;
+            $params['p2'] = $pacienteId;
+        }
         $st = $this->bd->prepare("SELECT id, codigo, fecha, hora_inicio, hora_fin, estado, paciente, paciente_ci, medico,
                                          especialidad, pago_estado, veces_reprogramada
                                     FROM vw_citas_detalle
                                    WHERE estado IN ('PROGRAMADA', 'CONFIRMADA') AND fecha >= current_date
                                      AND (CAST(:p AS bigint) IS NULL OR paciente_id = :p2)
                                      AND (CAST(:c AS text) = '' OR paciente ILIKE :l1 OR paciente_ci ILIKE :l2 OR codigo ILIKE :l3)
+                                     $filtro
                                    ORDER BY fecha, hora_inicio
                                    LIMIT 100");
-        $like = '%' . $criterio . '%';
-        $st->execute(['p' => $pacienteId, 'p2' => $pacienteId, 'c' => $criterio, 'l1' => $like, 'l2' => $like, 'l3' => $like]);
+        $st->execute($params);
         return $st->fetchAll();
     }
 
-    /** CU16: mueve la misma cita a otro mÃ©dico, fecha y hora (sp_reprogramar_cita valida estado y fecha). */
+    /** CU16: mueve la misma cita a otro médico, fecha y hora (sp_reprogramar_cita valida estado y fecha). */
     public function reprogramar(int $id, int $medicoId, string $fecha, string $horaInicio, string $horaFin, int $usuarioId): void
     {
         $this->bd->prepare('SELECT sp_reprogramar_cita(:id, :medico, CAST(:fecha AS date), CAST(:ini AS time), CAST(:fin AS time), :usuario)')
@@ -168,7 +186,7 @@ final class Cita extends EntidadBase
         return $st->fetch();
     }
 
-    /** CU18: productividad por mÃ©dico (citas por estado, % de inasistencia e ingresos cobrados). */
+    /** CU18: productividad por médico (citas por estado, % de inasistencia e ingresos cobrados). */
     public function reportarProductividad(string $desde, string $hasta): array
     {
         $st = $this->bd->prepare("SELECT p.nombres || ' ' || p.apellidos AS medico,
@@ -190,7 +208,7 @@ final class Cita extends EntidadBase
         return $st->fetchAll();
     }
 
-    /** CU18 (alimentado por CU17): inasistencias por especialidad sobre las citas que ya debÃ­an ocurrir. */
+    /** CU18 (alimentado por CU17): inasistencias por especialidad sobre las citas que ya debían ocurrir. */
     public function reportarAusentismo(string $desde, string $hasta): array
     {
         $st = $this->bd->prepare("SELECT e.nombre AS especialidad,
@@ -228,7 +246,7 @@ final class Cita extends EntidadBase
         return $st->fetchAll();
     }
 
-    /** CU10: citas futuras activas del m+¬dico (impiden darlo de baja hasta reprogramarlas o cancelarlas). */
+    /** CU10: citas futuras activas del médico (impiden darlo de baja hasta reprogramarlas o cancelarlas). */
     public function listarPendientesPorMedico(int $medico_id): array
     {
         $st = $this->bd->prepare("SELECT c.id, c.codigo, c.fecha, c.hora_inicio, c.estado,
@@ -241,7 +259,7 @@ final class Cita extends EntidadBase
         return $st->fetchAll();
     }
 
-    /** CU12: citas activas del m+¬dico dentro del periodo [inicio, fin) que se quiere bloquear. */
+    /** CU12: citas activas del médico dentro del periodo [inicio, fin) que se quiere bloquear. */
     public function listarEnPeriodo(int $medico_id, string $inicio, string $fin): array
     {
         $st = $this->bd->prepare("SELECT c.id, c.codigo, c.fecha, c.hora_inicio, pp.nombres || ' ' || pp.apellidos AS paciente, pp.telefono
@@ -254,7 +272,7 @@ final class Cita extends EntidadBase
         return $st->fetchAll();
     }
 
-    /** CU23: citas CONFIRMADAS o ATENDIDAS del paciente (las +¦nicas en que la base acepta solicitar ex+ímenes). */
+    /** CU23: citas CONFIRMADAS o ATENDIDAS del paciente (las únicas en que la base acepta solicitar exámenes). */
     public function listarParaExamen(int $paciente_id): array
     {
         $st = $this->bd->prepare("SELECT c.id, c.codigo, c.fecha, c.estado, e.nombre AS especialidad
@@ -262,6 +280,34 @@ final class Cita extends EntidadBase
                                    WHERE c.paciente_id = :p AND c.estado IN ('CONFIRMADA', 'ATENDIDA')
                                    ORDER BY c.fecha DESC LIMIT 50");
         $st->execute(['p' => $paciente_id]);
+        return $st->fetchAll();
+    }
+
+    /**
+     * CU18 (RF13): citas de un periodo con filtros opcionales por estado, médico y especialidad.
+     * Cubre «citas de una fecha», «por médico», «por especialidad», «por estado» y la agenda diaria de un médico.
+     */
+    public function listarParaReporte(string $desde, string $hasta, string $estado = '', ?int $medicoId = null, ?int $especialidadId = null): array
+    {
+        $sql = "SELECT to_char(fecha, 'DD/MM/YYYY') AS fecha, to_char(hora_inicio, 'HH24:MI') AS hora, codigo, paciente, paciente_ci,
+                       medico, especialidad, estado
+                  FROM vw_citas_detalle
+                 WHERE fecha BETWEEN CAST(:d AS date) AND CAST(:h AS date)";
+        $p = ['d' => $desde, 'h' => $hasta];
+        if ($estado !== '') {
+            $sql .= ' AND estado = :e';
+            $p['e'] = $estado;
+        }
+        if ($medicoId) {
+            $sql .= ' AND medico_id = :m';
+            $p['m'] = $medicoId;
+        }
+        if ($especialidadId) {
+            $sql .= ' AND especialidad_id = :s';
+            $p['s'] = $especialidadId;
+        }
+        $st = $this->bd->prepare($sql . ' ORDER BY vw_citas_detalle.fecha, hora_inicio, medico LIMIT 2000');
+        $st->execute($p);
         return $st->fetchAll();
     }
 }

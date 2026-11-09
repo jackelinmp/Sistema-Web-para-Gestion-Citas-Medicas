@@ -6,9 +6,11 @@
  * marcarAtendida(id)                    -> ControlGestionarEstadosCita::marcarAtendida()
  * marcarInasistencia(id)                -> ControlGestionarEstadosCita::marcarInasistencia()
  * reprogramarOCancelar(id)              -> ControlReprogramarCancelarCita::mostrarCita()   (CU16)
+ * avisarPorWhatsApp(id)                 -> abre WhatsApp con el recordatorio escrito (respaldo manual de CU24)
  * @var array $citas  @var array $medicos  @var int|null $medicoId  @var string $fecha  @var string $estado
  */
 use App\Nucleo\Sesion;
+use App\Servicios\ServicioWhatsApp;
 
 $usuario = Sesion::usuario();
 $rol = (string) ($usuario['rol'] ?? '');
@@ -84,6 +86,13 @@ $puedeInasistencia = in_array($rol, ['ADMINISTRADOR', 'RECEPCIONISTA', 'MEDICO']
 
         <?php if (in_array($cita['estado'], ['PROGRAMADA', 'CONFIRMADA'], true) && $puedeConfirmar && !$horaYaPaso): ?>
           <a class="btn-enlace" href="?r=citas/cambiar&amp;id=<?= (int) $cita['id'] ?>">Reprogramar o cancelar</a>
+        <?php endif; ?>
+
+        <?php if (in_array($cita['estado'], ['PROGRAMADA', 'CONFIRMADA'], true) && $puedeConfirmar && !$horaYaPaso
+                  && ($enlaceWa = ServicioWhatsApp::enlaceChat((string) ($cita['telefono_aviso'] ?? ''),
+                      'Clínica Vida Salud: le recordamos la cita de ' . $cita['paciente'] . ' el ' . date('d/m/Y', strtotime($cita['fecha']))
+                      . ' a las ' . hora($cita['hora_inicio']) . ' con ' . $cita['medico'] . ' (' . $cita['especialidad'] . '). Código ' . $cita['codigo'] . '.'))): ?>
+          <a class="btn-enlace" href="<?= e($enlaceWa) ?>" target="_blank" rel="noopener" title="Abre WhatsApp con el recordatorio ya escrito">Avisar por WhatsApp</a>
         <?php endif; ?>
       </td>
     </tr>

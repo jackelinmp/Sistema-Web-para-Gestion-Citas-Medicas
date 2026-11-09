@@ -97,4 +97,12 @@ final class PreguntaFrecuente extends EntidadBase
         $texto = strtr($texto, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n']);
         return trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z0-9\/ ]/', ' ', $texto)));
     }
+
+    /** CU25: preguntas activas para los botones de sugerencia del chat (las que sí tienen respuesta). */
+    public function listarSugerencias(int $cantidad): array
+    {
+        $st = $this->bd->prepare('SELECT pregunta FROM pregunta_frecuente WHERE estado ORDER BY id LIMIT ' . (int) $cantidad);
+        $st->execute();
+        return $st->fetchAll(\PDO::FETCH_COLUMN);
+    }
 }

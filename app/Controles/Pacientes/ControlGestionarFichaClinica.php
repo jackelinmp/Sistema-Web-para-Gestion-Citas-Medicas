@@ -26,6 +26,9 @@ final class ControlGestionarFichaClinica extends ControlBase
             $this->mostrarBusqueda();
             return;
         }
+        if ($this->mostrarSinExpediente($pacienteId, 'Ficha clínica', 'ficha')) {
+            return;
+        }
         $paciente = $this->obtenerPaciente($pacienteId);
         $fichas = new FichaClinica();
         $fichas->crearFichaVacia($pacienteId);

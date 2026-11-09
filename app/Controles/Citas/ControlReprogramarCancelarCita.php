@@ -35,10 +35,12 @@ final class ControlReprogramarCancelarCita extends ControlBase
         $this->exigirAcceso();
         $esPaciente = $this->esPaciente();
         $criterio = $esPaciente ? '' : trim((string) ($_GET['criterio'] ?? ''));
+        $aCargo = $this->pacientesACargo();
         $this->vista('Citas/IUMisCitas', [
-            'citas'      => (new Cita())->listarProximas($esPaciente ? (int) Sesion::usuario()['persona_id'] : null, $criterio),
+            'citas'      => (new Cita())->listarProximas($esPaciente ? ($aCargo ?? []) : null, $criterio),
             'criterio'   => $criterio,
             'esPaciente' => $esPaciente,
+            'mostrarPaciente' => !$esPaciente || count($aCargo ?? []) > 1,
         ]);
     }
 
@@ -213,12 +215,10 @@ final class ControlReprogramarCancelarCita extends ControlBase
         }
     }
 
-    /** El paciente solo puede tocar sus propias citas. */
+    /** El paciente solo puede tocar sus citas o las de un familiar a su cargo (CU22). */
     private function exigirDueno(array $cita): void
     {
-        if ($this->esPaciente() && (int) $cita['paciente_id'] !== (int) Sesion::usuario()['persona_id']) {
-            Sesion::denegar('Intento de cambiar la cita ' . (int) $cita['id'] . ' de otro paciente');
-        }
+        $this->exigirAccesoPaciente(self::MODULO, (int) $cita['paciente_id']);
     }
 
 

@@ -39,16 +39,43 @@ final class Notificacion extends EntidadBase
     }
 
     /** Correos aún no enviados, con el destinatario. */
+    /**
+     * Avisos aún no enviados de los últimos 3 días, con los datos de contacto del titular de la cuenta.
+     * Los más antiguos ya no sirven como aviso y no se reintentan.
+     */
     public function listarSinEnviar(int $limite = 50): array
     {
-        $st = $this->bd->prepare("SELECT n.id, n.asunto, n.mensaje, u.correo, p.nombres || ' ' || p.apellidos AS nombre
+        $whatsapp = $this->existeColumnaWhatsapp() ? 'u.avisos_whatsapp' : 'FALSE';
+        $st = $this->bd->prepare("SELECT n.id, n.asunto, n.mensaje, u.correo, p.telefono, $whatsapp AS avisos_whatsapp,
+                                         p.nombres || ' ' || p.apellidos AS nombre
                                     FROM notificacion n
                                     JOIN usuario u ON u.id = n.usuario_id AND u.estado = 'HABILITADA'
                                     JOIN persona p ON p.id = u.persona_id
                                    WHERE n.canal = 'CORREO' AND n.fecha_envio IS NULL
+                                     AND n.fecha_creacion > now() - interval '3 days'
                                    ORDER BY n.id LIMIT " . (int) $limite);
         $st->execute();
         return $st->fetchAll();
+    }
+
+    /** true si ya se aplicó la migración 11 (columna usuario.avisos_whatsapp). */
+    public function existeColumnaWhatsapp(): bool
+    {
+        static $existe = null;
+        if ($existe === null) {
+            $existe = (bool) $this->bd->query("SELECT 1 FROM information_schema.columns
+                                                 WHERE table_name = 'usuario' AND column_name = 'avisos_whatsapp'")->fetchColumn();
+        }
+        return $existe;
+    }
+
+    /** ¿El paciente de la cita ya se atendió alguna vez? Si no, el aviso le pide pasar por recepción. */
+    public function esPrimeraConsulta(int $citaId): bool
+    {
+        $st = $this->bd->prepare("SELECT NOT EXISTS (SELECT 1 FROM cita a JOIN cita c ON c.paciente_id = a.paciente_id
+                                                      WHERE c.id = :c AND a.estado = 'ATENDIDA')");
+        $st->execute(['c' => $citaId]);
+        return (bool) $st->fetchColumn();
     }
 
     public function marcarEnviada(int $id): void
@@ -61,14 +88,22 @@ final class Notificacion extends EntidadBase
     {
         $st = $this->bd->prepare("SELECT c.id, c.codigo, c.fecha, c.hora_inicio, c.estado, c.medico, c.especialidad,
                                          c.pago_estado, c.paciente,
-                                         COALESCE(u.id, ut.id) AS usuario_id
+                                         COALESCE(u.id, ut.id, utv.id) AS usuario_id
                                     FROM vw_citas_detalle c
                                     JOIN persona pp ON pp.id = c.paciente_id
                                     LEFT JOIN persona pt ON pt.id = pp.tutor_id
                                     LEFT JOIN usuario u ON u.persona_id = c.paciente_id AND u.estado = 'HABILITADA'
                                     LEFT JOIN usuario ut ON ut.persona_id = pp.tutor_id AND ut.estado = 'HABILITADA'
+                                    LEFT JOIN LATERAL (
+                                        SELECT us.id
+                                          FROM vinculo_familiar vf
+                                          JOIN usuario us ON us.persona_id = vf.paciente_id AND us.estado = 'HABILITADA'
+                                         WHERE vf.familiar_id = c.paciente_id
+                                         ORDER BY (vf.paciente_id = pp.tutor_id) DESC, us.id
+                                         LIMIT 1
+                                    ) utv ON TRUE
                                    WHERE c.fecha = CAST(:f AS date) AND c.estado IN ('PROGRAMADA', 'CONFIRMADA')
-                                     AND COALESCE(u.id, ut.id) IS NOT NULL
+                                     AND COALESCE(u.id, ut.id, utv.id) IS NOT NULL
                                      AND NOT EXISTS (SELECT 1 FROM notificacion n
                                                        WHERE n.cita_id = c.id AND n.tipo = 'RECORDATORIO')
                                     ORDER BY c.hora_inicio");

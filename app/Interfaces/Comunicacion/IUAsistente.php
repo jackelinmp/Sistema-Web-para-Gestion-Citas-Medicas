@@ -5,8 +5,8 @@
  * enviarMensaje(texto)   -> ControlAsistenteVirtual::enviarMensaje()      (escribir, tocar una sugerencia o dictar 🎤)
  * cerrarConversacion()   -> ControlAsistenteVirtual::cerrarConversacion()  (botón «Nueva conversación»)
  * @var string $conversacionId  @var array $mensajes  @var array|null $usuario  @var string $textoInicial (comando de voz)
+ * @var array $sugerencias  preguntas activas de la base de conocimiento + «Ver mis citas»
  */
-$sugerencias = ['¿Cuál es el horario de atención?', '¿Cómo agendo una cita?', 'Ver mis citas', '¿Qué métodos de pago aceptan?'];
 ?>
 <div class="chat-caja">
 
@@ -55,6 +55,6 @@ $sugerencias = ['¿Cuál es el horario de atención?', '¿Cómo agendo una cita?
   </form>
 
   <?php if (empty($usuario)): ?>
-    <p class="chat-pie"><a href="?r=sesion/formulario">Iniciar sesión</a> para ver sus citas · <a href="?r=sesion/registro">Soy paciente nuevo</a></p>
+    <p class="chat-pie"><a href="?r=sesion/formulario">Iniciar sesión</a> para ver sus citas · <a href="?r=sesion/registro">Registrarme como paciente</a></p>
   <?php endif; ?>
 </div>

@@ -21,6 +21,10 @@ services:
         generateValue: true
       - key: CRON_CLAVE            # CU24: clave de la tarea diaria de recordatorios
         generateValue: true
+      - key: WHATSAPP_TOKEN        # CU24 (opcional): avisos por WhatsApp
+        sync: false
+      - key: WHATSAPP_PHONE_ID
+        sync: false
       - key: APP_URL
         sync: false
       - key: DB_HOST

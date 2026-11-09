@@ -74,4 +74,38 @@ final class Paciente extends EntidadBase
         $this->bd->prepare('UPDATE paciente SET estado = :estado WHERE persona_id = :id')
                  ->execute(['estado' => $estado, 'id' => $persona_id]);
     }
+
+    /** Mi perfil: el paciente completa o corrige su contacto de emergencia. */
+    public function actualizarContactoEmergencia(int $persona_id, ?string $nombre, ?string $parentesco, ?string $telefono): void
+    {
+        $this->bd->prepare('UPDATE paciente SET contacto_emergencia_nombre = :n, contacto_emergencia_parentesco = :p,
+                                   contacto_emergencia_telefono = :t WHERE persona_id = :id')
+                 ->execute(['n' => $nombre, 'p' => $parentesco, 't' => $telefono, 'id' => $persona_id]);
+    }
+
+    /**
+     * Abre el expediente de una persona que aún no es paciente (reserva en línea): paciente sin datos de
+     * contacto (los completa recepción en la primera visita) y ficha clínica vacía. Devuelve el N.º de expediente.
+     */
+    public function abrirExpediente(int $persona_id): string
+    {
+        $expediente = $this->insertar($persona_id, ['contacto_emergencia_nombre' => null, 'contacto_emergencia_parentesco' => null,
+                                                    'contacto_emergencia_telefono' => null, 'aseguradora_id' => null, 'nro_poliza' => null]);
+        (new FichaClinica())->crearFichaVacia($persona_id);
+        return $expediente;
+    }
+
+    /** CU18 (RF13): pacientes registrados en el periodo, con su cantidad de citas. */
+    public function listarRegistrados(string $desde, string $hasta): array
+    {
+        $st = $this->bd->prepare("SELECT p.nro_expediente AS expediente, pe.nombres || ' ' || pe.apellidos AS paciente, pe.ci,
+                                         date_part('year', age(pe.fecha_nacimiento))::int AS edad, pe.sexo,
+                                         to_char(p.fecha_registro, 'DD/MM/YYYY') AS registrado,
+                                         (SELECT count(*) FROM cita c WHERE c.paciente_id = p.persona_id) AS citas
+                                    FROM paciente p JOIN persona pe ON pe.id = p.persona_id
+                                   WHERE p.fecha_registro::date BETWEEN CAST(:d AS date) AND CAST(:h AS date)
+                                   ORDER BY p.fecha_registro, pe.apellidos LIMIT 2000");
+        $st->execute(['d' => $desde, 'h' => $hasta]);
+        return $st->fetchAll();
+    }
 }

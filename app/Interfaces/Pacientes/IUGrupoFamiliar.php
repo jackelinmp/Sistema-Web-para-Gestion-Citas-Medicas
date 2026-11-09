@@ -8,12 +8,19 @@
  */
 use App\Entidades\VinculoFamiliar;
 use App\Nucleo\Sesion;
+
+$usuarioActual = Sesion::usuario();
+$esCuentaPaciente = ($usuarioActual['rol'] ?? '') === 'PACIENTE';
+$propioId = (int) ($usuarioActual['persona_id'] ?? 0);
+$esMenor = fn($fecha) => $fecha && (new DateTime((string) $fecha))->diff(new DateTime())->y < 18;
 ?>
 <div class="encabezado">
-  <h2>Grupo familiar · <?= e($titular['nombres'] . ' ' . $titular['apellidos']) ?> (<?= e($titular['nro_expediente']) ?>)</h2>
-  <a class="btn secundario" href="?r=historial&paciente_id=<?= (int) $titular['persona_id'] ?>">Volver al historial</a>
+  <h2>Grupo familiar · <?= e($titular['nombres'] . ' ' . $titular['apellidos']) ?><?= $titular['nro_expediente'] ? ' (' . e($titular['nro_expediente']) . ')' : '' ?></h2>
+  <?php if ($titular['nro_expediente']): ?><a class="btn secundario" href="?r=historial&paciente_id=<?= (int) $titular['persona_id'] ?>">Volver al historial</a><?php endif; ?>
 </div>
-<p class="suave">El titular puede pagar y consultar los pagos y resultados de laboratorio de sus familiares a cargo.</p>
+<p class="suave">El responsable saca las citas, paga y recibe los avisos de las personas de su grupo.
+  El historial y los resultados de laboratorio los ve solo de los menores de edad; un adulto los ve con su propia cuenta.</p>
+<?php if ($esCuentaPaciente): ?><p><a class="btn secundario" href="?r=citas/otra-persona">+ Cita para otra persona</a></p><?php endif; ?>
 <?php if (isset($errores['general'])): ?><div class="alerta error"><?= e($errores['general']) ?></div><?php endif; ?>
 
 <table class="tabla">
@@ -25,7 +32,7 @@ use App\Nucleo\Sesion;
       <td><?= e(VinculoFamiliar::PARENTESCOS[$f['parentesco']] ?? $f['parentesco']) ?></td>
       <td><?= e($f['ci']) ?></td><td><?= fecha($f['fecha_nacimiento']) ?></td><td><?= insignia($f['estado']) ?></td>
       <td class="acciones">
-        <a href="?r=historial&paciente_id=<?= (int) $f['familiar_id'] ?>">Historial</a>
+        <?php if (!$esCuentaPaciente || $esMenor($f['fecha_nacimiento'])): ?><a href="?r=historial&paciente_id=<?= (int) $f['familiar_id'] ?>">Historial</a><?php endif; ?>
         <?php if (Sesion::puede('CITAS', 'R') && $f['estado'] === 'ACTIVO'): ?>
           <a href="?r=citas/nueva&paciente_id=<?= (int) $f['familiar_id'] ?>">Agendar cita</a>
         <?php endif; ?>
@@ -44,7 +51,7 @@ use App\Nucleo\Sesion;
 
 <?php if ($titulares): ?>
   <p>Este paciente está a cargo de:
-    <?php foreach ($titulares as $i => $t): ?><?= $i ? ', ' : '' ?><a href="?r=grupo-familiar&paciente_id=<?= (int) $t['titular_id'] ?>"><?= e($t['nombre']) ?></a><?php endforeach; ?>
+    <?php foreach ($titulares as $i => $t): ?><?= $i ? ', ' : '' ?><?php if (!$esCuentaPaciente || (int) $t['titular_id'] === $propioId): ?><a href="?r=grupo-familiar&paciente_id=<?= (int) $t['titular_id'] ?>"><?= e($t['nombre']) ?></a><?php else: ?><?= e($t['nombre']) ?><?php endif; ?><?php endforeach; ?>
   </p>
 <?php endif; ?>
 
