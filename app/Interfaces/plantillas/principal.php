@@ -50,16 +50,11 @@ $iniciales = $usuario ? mb_strtoupper(mb_substr(preg_replace('/[^\p{L} ]/u', '',
             <div class="nav-grupo"><?= e($paquete['id']) ?> · <?= e($paquete['titulo']) ?></div>
             <?php foreach ($paquete['items'] as $it):
               $activo = $itemActual && $itemActual['texto'] === $it['texto'] && $itemActual['ciclo'] === $it['ciclo'];
-              if ($it['estado'] === 'ok'): ?>
+              if ($it['estado'] !== 'ok') { continue; } ?>
                 <a href="?r=<?= e($it['ruta']) ?>" class="nav <?= $activo ? 'activo' : '' ?>" <?= $activo ? 'aria-current="page"' : '' ?>>
                   <?= icono($it['icono']) ?><span><?= e($it['texto']) ?></span><?= etiquetaCu($it) ?>
                 </a>
-              <?php else: ?>
-                <span class="nav bloqueado" aria-disabled="true" title="<?= e(Ciclos::motivo($it['estado'])) ?>">
-                  <?= icono($it['icono']) ?><span><?= e($it['texto']) ?></span><?= icono('candado', 14) ?>
-                </span>
-              <?php endif;
-            endforeach; ?>
+            <?php endforeach; ?>
           <?php endforeach; ?>
         </details>
       <?php endforeach; ?>
@@ -68,7 +63,7 @@ $iniciales = $usuario ? mb_strtoupper(mb_substr(preg_replace('/[^\p{L} ]/u', '',
 
     <div class="menu-usuario">
       <span class="avatar"><?= e($iniciales) ?></span>
-      <span class="menu-usuario-datos"><strong><?= e($usuario['nombre']) ?></strong><small><?= e($usuario['rol']) ?></small></span>
+      <a class="menu-usuario-datos" href="?r=perfil" title="Mi perfil"><strong><?= e($usuario['nombre']) ?></strong><small>Mi perfil · <?= e(ucfirst(strtolower($usuario['rol']))) ?></small></a>
       <form method="post" action="?r=sesion/cerrar"><?= campoCsrf() ?>
         <button class="btn-icono" title="Cerrar sesión" aria-label="Cerrar sesión"><?= icono('salir') ?></button>
       </form>
@@ -90,8 +85,14 @@ $iniciales = $usuario ? mb_strtoupper(mb_substr(preg_replace('/[^\p{L} ]/u', '',
             <strong>Clínica Vida Salud</strong>
           <?php endif; ?>
         </div>
+        <?php if ($usuario['rol'] === 'PACIENTE' && ($avisos = (new \App\Entidades\Notificacion())->contarNoLeidas((int) $usuario['id'])) > 0): ?>
+          <a class="btn-enlace enlace-barra" href="?r=notificaciones">Notificaciones<span class="contador-avisos"><?= (int) $avisos ?></span></a>
+        <?php endif; ?>
+        <button type="button" class="btn-voz" data-comando-voz hidden title="Comando de voz (diga «ayuda» para ver ejemplos)" aria-label="Comando de voz">
+          <?= icono('microfono', 18) ?><span>Voz</span>
+        </button>
         <span class="rol-chip"><?= e($usuario['rol']) ?></span>
-        <a class="btn-enlace enlace-barra" href="?r=sesion/cambiar">Cambiar contraseña</a>
+        <a class="btn-enlace enlace-barra" href="?r=perfil">Mi perfil</a>
       <?php else: ?>
         <strong>Clínica Vida Salud</strong>
       <?php endif; ?>
@@ -103,6 +104,10 @@ $iniciales = $usuario ? mb_strtoupper(mb_substr(preg_replace('/[^\p{L} ]/u', '',
     </main>
   </div>
 </div>
+<?php if ($usuario): ?>
+<div class="voz-estado" role="status" aria-live="polite" hidden></div>
+<script type="application/json" id="comandos-voz"><?= json_encode(comandosDeVoz($ciclos), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+<?php endif; ?>
 <script src="js/app.js"></script>
 </body>
 </html>

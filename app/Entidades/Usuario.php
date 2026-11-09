@@ -21,6 +21,21 @@ final class Usuario extends EntidadBase
         return $st->fetch() ?: null;
     }
 
+    /** CU01: cuenta por correo o por CI (el paciente puede entrar con cualquiera de los dos). */
+    public function buscarPorIdentificador(string $identificador): ?array
+    {
+        $sql = 'SELECT u.id, u.persona_id, u.rol_id, u.correo, u.contrasena_hash, u.estado,
+                       u.debe_cambiar_contrasena, u.intentos_fallidos, u.bloqueado_hasta,
+                       r.nombre AS rol, p.nombres || \' \' || p.apellidos AS nombre
+                  FROM usuario u
+                  JOIN rol r     ON r.id = u.rol_id
+                  JOIN persona p ON p.id = u.persona_id
+                 WHERE lower(u.correo) = lower(:ident) OR upper(trim(p.ci)) = upper(trim(:ci))';
+        $st = $this->bd->prepare($sql);
+        $st->execute(['ident' => $identificador, 'ci' => $identificador]);
+        return $st->fetch() ?: null;
+    }
+
     /** CU01: minutos que faltan para que termine el bloqueo temporal (0 = no está bloqueada). */
     public function estaBloqueado(array $usuario): int
     {
@@ -130,5 +145,23 @@ final class Usuario extends EntidadBase
     {
         $this->bd->prepare('UPDATE usuario SET estado = :estado WHERE id = :id')
                  ->execute(['estado' => $estado, 'id' => $id]);
+    }
+
+    /** Mi perfil: correo de la cuenta y si acepta avisos por WhatsApp (columna de la migración 11). */
+    public function actualizarPreferencias(int $id, string $correo, ?bool $avisosWhatsapp): void
+    {
+        if ($avisosWhatsapp === null) {
+            $this->bd->prepare('UPDATE usuario SET correo = :c WHERE id = :id')->execute(['c' => $correo, 'id' => $id]);
+            return;
+        }
+        $this->bd->prepare('UPDATE usuario SET correo = :c, avisos_whatsapp = :w WHERE id = :id')
+                 ->execute(['c' => $correo, 'w' => $avisosWhatsapp ? 'true' : 'false', 'id' => $id]);
+    }
+
+    public function aceptaWhatsapp(int $id): bool
+    {
+        $st = $this->bd->prepare('SELECT avisos_whatsapp FROM usuario WHERE id = :id');
+        $st->execute(['id' => $id]);
+        return (bool) $st->fetchColumn();
     }
 }

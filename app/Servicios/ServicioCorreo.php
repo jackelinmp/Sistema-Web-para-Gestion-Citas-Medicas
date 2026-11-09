@@ -33,6 +33,17 @@ final class ServicioCorreo
         return $this->enviar($correo, 'Restablecer su contraseña - Clínica Vida Salud', $html);
     }
 
+    /** CU24: aviso de cita, recordatorio o cancelación con el formato de la clínica. */
+    public function enviarNotificacion(string $correo, string $nombre, string $asunto, string $mensaje): bool
+    {
+        $html = '<div style="font-family:Arial,sans-serif;color:#3b2f2a;max-width:520px">'
+              . '<h2 style="color:#b5573a">Clínica Vida Salud</h2>'
+              . '<p>Hola ' . htmlspecialchars($nombre) . ',</p>'
+              . '<p>' . nl2br(htmlspecialchars($mensaje)) . '</p>'
+              . '<p style="color:#7a6a62;font-size:13px">Este es un mensaje automático; no responda a este correo.</p></div>';
+        return $this->enviar($correo, $asunto . ' - Clínica Vida Salud', $html);
+    }
+
     public function enviar(string $para, string $asunto, string $html): bool
     {
         if (!self::configurado()) {

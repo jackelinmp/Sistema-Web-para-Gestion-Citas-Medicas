@@ -1,0 +1,45 @@
+# =====================================================================================
+#  Blueprint de Render para Clínica Vida Salud.
+#  Crea el servicio web con Docker y deja las variables listas para completar.
+#  Los valores marcados con sync: false se piden al crear el Blueprint.
+# =====================================================================================
+services:
+  - type: web
+    name: clinica-vida-salud
+    runtime: docker
+    plan: free
+    region: ohio
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: APP_DEBUG
+        value: "false"
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: APP_KEY
+        generateValue: true
+      - key: CRON_CLAVE            # CU24: clave de la tarea diaria de recordatorios
+        generateValue: true
+      - key: WHATSAPP_TOKEN        # CU24 (opcional): avisos por WhatsApp
+        sync: false
+      - key: WHATSAPP_PHONE_ID
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        value: postgres
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false

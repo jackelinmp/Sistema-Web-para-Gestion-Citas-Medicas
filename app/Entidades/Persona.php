@@ -16,6 +16,27 @@ final class Persona extends EntidadBase
         return (bool) $st->fetchColumn();
     }
 
+    /** Busca una persona por CI y devuelve su id junto con el id de usuario (si tiene cuenta). */
+    public function buscarPorCi(string $ci): ?array
+    {
+        $st = $this->bd->prepare('SELECT p.id, p.ci, p.nombres, p.apellidos, p.fecha_nacimiento, p.sexo, p.telefono, p.direccion, p.tutor_id, u.id AS usuario_id
+                                  FROM persona p
+                                  LEFT JOIN usuario u ON u.persona_id = p.id
+                                  WHERE p.ci = :ci');
+        $st->execute(['ci' => $ci]);
+        return $st->fetch() ?: null;
+    }
+
+    public function obtenerPorId(int $id): ?array
+    {
+        $st = $this->bd->prepare('SELECT p.id, p.ci, p.nombres, p.apellidos, p.fecha_nacimiento, p.sexo, p.telefono, p.direccion, p.tutor_id, u.id AS usuario_id, u.correo
+                                  FROM persona p
+                                  LEFT JOIN usuario u ON u.persona_id = p.id
+                                  WHERE p.id = :id');
+        $st->execute(['id' => $id]);
+        return $st->fetch() ?: null;
+    }
+
     public function insertar(array $d): int
     {
         $st = $this->bd->prepare('INSERT INTO persona (ci, nombres, apellidos, fecha_nacimiento, sexo, telefono, direccion)
@@ -32,5 +53,19 @@ final class Persona extends EntidadBase
                                          telefono = :telefono, direccion = :direccion
                                    WHERE id = :id');
         $st->execute(array_intersect_key($d, array_flip(self::CAMPOS)) + ['id' => $id]);
+    }
+
+    /** CU22: guarda el tutor responsable del dependiente (para enviarle sus notificaciones). */
+    public function actualizarTutor(int $id, ?int $tutorId): void
+    {
+        $this->bd->prepare('UPDATE persona SET tutor_id = :t WHERE id = :id')
+                 ->execute(['t' => $tutorId, 'id' => $id]);
+    }
+
+    /** Mi perfil: la persona cambia solo su celular y su dirección. */
+    public function actualizarContacto(int $id, ?string $telefono, ?string $direccion): void
+    {
+        $this->bd->prepare('UPDATE persona SET telefono = :t, direccion = :d WHERE id = :id')
+                 ->execute(['t' => $telefono, 'd' => $direccion, 'id' => $id]);
     }
 }

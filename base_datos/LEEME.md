@@ -36,5 +36,6 @@ En *SQL Editor → New query* pega **`base_datos_completa.sql`** y pulsa *Run*. 
 `tg_resultado_listo` (marca el examen listo y notifica), `tg_conversacion_cierre`, `tg_mensaje_conversacion_activa`, `tg_faq_fecha`.
 Restricciones `ex_cita_medico`, `ex_cita_paciente` y `ex_jornada_superpuesta`: impiden horarios superpuestos.
 
-## Variables de entorno (Vercel)
+## Variables de entorno (Render)
 `DB_HOST` (pooler de Supabase), `DB_PORT=5432`, `DB_NAME=postgres`, `DB_USER=postgres.<ref>`, `DB_PASS`, `DB_SSLMODE=require`.
+Se cargan en **Environment** del servicio de Render, no en un archivo `.env`.

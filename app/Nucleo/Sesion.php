@@ -46,6 +46,9 @@ final class Sesion
     public static function exigirLogin(): void
     {
         if (!self::usuario()) {
+            if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
+                $_SESSION['volver_a'] = (string) ($_SERVER['QUERY_STRING'] ?? '');   // se retoma al iniciar sesión
+            }
             self::flash('error', 'Inicie sesión para continuar.');
             header('Location: ?r=sesion/formulario');
             exit;

@@ -16,7 +16,7 @@
     <dt>Fecha</dt><dd><?= fecha($cita['fecha']) ?></dd>
     <dt>Horario</dt><dd><?= hora($cita['hora_inicio']) ?> – <?= hora($cita['hora_fin']) ?></dd>
     <dt>Motivo</dt><dd><?= e($cita['motivo_consulta'] ?: '—') ?></dd>
-    <dt>Costo</dt><dd><?= bs($cita['costo_consulta']) ?> (pago pendiente)</dd>
+    <dt>Costo</dt><dd><?= bs($cita['costo_consulta']) ?> <?= insignia($cita['pago_estado'] ?? 'PENDIENTE') ?></dd>
   </dl>
   <div class="botones">
     <?php if (\App\Nucleo\Sesion::puede('PACIENTES', 'C')): ?><a class="btn secundario" href="?r=pacientes">Volver a pacientes</a><?php endif; ?>

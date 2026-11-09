@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Pruebas - Sistema Web de Gestion de Citas Medicas</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; background: #f7f3ef; color: #3b2f2a; }
+  h1 { color: #b5573a; }
+  h2 { color: #7a3b24; border-bottom: 2px solid #e0cfc5; padding-bottom: 4px; margin-top: 24px; }
+  h3 { color: #5a3a2a; margin-top: 16px; }
+  .card { background: #fff; border: 1px solid #e0cfc5; border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
+  .user { background: #fff7f0; }
+  label { display: block; margin: 6px 0; cursor: pointer; }
+  input[type=checkbox] { margin-right: 8px; transform: scale(1.2); }
+  .done { text-decoration: line-through; color: #8a7a72; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-left: 6px; }
+  .admin { background: #fce4e4; color: #8b1a1a; }
+  .recep { background: #e4f0fc; color: #1a3a8b; }
+  .medico { background: #e4fce4; color: #1a6b1a; }
+  .paciente { background: #fcfce4; color: #6b6b1a; }
+  .visitante { background: #f0e4fc; color: #5a1a8b; }
+  .reset { margin: 12px 0; }
+  button { background: #b5573a; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+  .nota { font-size: 13px; color: #6b5a52; font-style: italic; }
+  .ej { background: #eef7ee; border-left: 3px solid #4a9a4a; padding: 6px 10px; margin: 6px 0; font-size: 13px; }
+  code { background: #f0e8e0; padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Checklist de pruebas - Sistema Web de Gestion de Citas Medicas</h1>
+<p class="nota">Marque cada casilla al verificar. El progreso se guarda en este navegador (localStorage).</p>
+<div class="reset"><button onclick="resetAll()">Reiniciar todas las marcas</button> <span id="progreso"></span></div>
+
+<h2>0. Preparacion</h2>
+<div class="card">
+  <label><input type="checkbox" data-k="prep1"> Base de datos conectada (login funciona con admin).</label>
+  <label><input type="checkbox" data-k="prep2"> Migracion 01_ciclo2_estados_cita.sql aplicada (permisos CITAS incluyen M).</label>
+  <label><input type="checkbox" data-k="prep3"> Datos de ejemplo cargados (pacientes, medicos, citas) - opcional pero recomendado.</label>
+  <label><input type="checkbox" data-k="prep4"> Servidor local arrancado: php -S localhost:8000 -t public public/principal.php.</label>
+</div>
+
+<h2>1. Usuarios de prueba</h2>
+<div class="card user">
+  <p><strong>Administrador</strong> <span class="tag admin">ADMIN</span>: admin@clinicavidasalud.com / Admin123*</p>
+  <p><strong>Recepcionista</strong> <span class="tag recep">RECEP</span>: recepcion1@clinicavidasalud.com / Clinica123*</p>
+  <p><strong>Medico</strong> <span class="tag medico">MEDICO</span>: veronica.salazar@clinicavidasalud.com / Clinica123*</p>
+  <p><strong>Paciente (portal)</strong> <span class="tag paciente">PACIENTE</span>: carla.villarroel@correo.com / Clinica123* (tambien monica.fernandez, fabiola.condori, sofia.rivero, lucia.calle, ricardo.penaranda)</p>
+  <p><strong>Visitante</strong> <span class="tag visitante">SIN SESION</span>: sin login (asistente virtual).</p>
+</div>
+
+<h2>2. Paciente nuevo (cliente) - registro en linea</h2>
+<div class="card">
+  <p class="nota">Ruta: ?r=sesion/registro. No requiere sesion.</p>
+  <div class="ej">Datos de ejemplo: CI 9999999 | Nombres Juan Perez | Apellidos Gomez Lopez | Fecha nac. 1990-05-15 | Sexo M | Telefono 71234567 | Direccion Av. Arce #123, La Paz | Correo juan.perez@correo.com | Contrasena Clinica123* | Confirmacion Clinica123* | Contacto emergencia Maria Gomez | Parentesco Esposa | Tel. emergencia 72345678</div>
+  <label><input type="checkbox" data-k="pn1"> Abrir sesion/registro muestra el formulario.</label>
+  <label><input type="checkbox" data-k="pn2"> Registrar un paciente nuevo con los datos de ejemplo.</label>
+  <label><input type="checkbox" data-k="pn3"> Al guardar, redirige al login o al panel.</label>
+  <label><input type="checkbox" data-k="pn4"> Iniciar sesion con el nuevo paciente funciona.</label>
+  <label><input type="checkbox" data-k="pn5"> El paciente ve solo sus citas y puede reprogramar/cancelar.</label>
+</div>
+
+<h2>3. Ciclo 1 - Seguridad y catalogos</h2>
+<div class="card">
+  <h3>CU01 Iniciar sesion (todos)</h3>
+  <div class="ej">Admin: admin@clinicavidasalud.com / Admin123*. Recepcionista: recepcion1@clinicavidasalud.com / Clinica123*.</div>
+  <label><input type="checkbox" data-k="cu01a"> Login con admin funciona.</label>
+  <label><input type="checkbox" data-k="cu01b"> Login incorrecto muestra error.</label>
+  <label><input type="checkbox" data-k="cu01c"> Recuperar contrasena envia enlace (o lo muestra si no hay correo configurado).</label>
+  <label><input type="checkbox" data-k="cu01d"> Cambiar contrasena funciona.</label>
+  <h3>CU02 Cuentas (ADMIN)</h3>
+  <label><input type="checkbox" data-k="cu02a"> Listar, crear, editar y suspender cuentas.</label>
+  <h3>CU03 Roles y permisos (ADMIN)</h3>
+  <label><input type="checkbox" data-k="cu03a"> Matriz de permisos por rol editable.</label>
+  <h3>CU04 Bitacora (ADMIN)</h3>
+  <label><input type="checkbox" data-k="cu04a"> Se listan eventos con usuario, fecha e IP.</label>
+  <h3>CU05 Pacientes (RECEP/ADMIN)</h3>
+  <label><input type="checkbox" data-k="cu05a"> Registrar, buscar y cambiar estado de pacientes.</label>
+  <h3>CU06 Edad y restricciones (RECEP/ADMIN)</h3>
+  <label><input type="checkbox" data-k="cu06a"> Especialidades permitidas segun edad y sexo.</label>
+  <h3>CU08 Especialidades / CU09 Medicos (ADMIN)</h3>
+  <label><input type="checkbox" data-k="cu08a"> CRUD de especialidades y medicos.</label>
+  <h3>CU11 Jornada / CU13 Disponibilidad (MEDICO/RECEP)</h3>
+  <label><input type="checkbox" data-k="cu11a"> Configurar jornada y ver cupos libres.</label>
+  <h3>CU14 Agendar cita (RECEP/PACIENTE)</h3>
+  <div class="ej">Buscar paciente: carla. Especialidad: Medicina General. Medico: Veronica Salazar. Fecha: manana (2026-11-07). Motivo: Control general anual.</div>
+  <label><input type="checkbox" data-k="cu14a"> Asistente de 4 pasos crea cita y muestra constancia.</label>
+  <label><input type="checkbox" data-k="cu14b"> Boton "Pagar ahora" lleva a CU19.</label>
+  <h3>CU19 Pago en linea (PACIENTE/RECEP)</h3>
+  <label><input type="checkbox" data-k="cu19a"> Iniciar pago, retorno y comprobante PDF.</label>
+</div>
+
+<h2>4. Ciclo 2 - lo que ya funciona</h2>
+
+<h3>CU15 Estados de cita + CU17 Inasistencia (ADMIN/RECEP/MEDICO)</h3>
+<div class="card">
+  <p class="nota">Ruta: citas/agenda. Medico ve solo su agenda.</p>
+  <div class="ej">Ejemplo: fecha 2026-11-07, estado PROGRAMADA. Para probar Atender/Inasistencia, mover una cita al pasado con el SQL de pruebas (ver docs/pruebas_cu15_cu17.md).</div>
+  <label><input type="checkbox" data-k="cu15_1"> Agenda del dia carga con filtros de fecha, medico y estado.</label>
+  <label><input type="checkbox" data-k="cu15_2"> Confirmar una cita Programada -> Confirmada.</label>
+  <label><input type="checkbox" data-k="cu15_3"> Marcar atendida (solo ADMIN/MEDICO, hora pasada) -> Atendida.</label>
+  <label><input type="checkbox" data-k="cu17_1"> Registrar inasistencia (desde Programada o Confirmada, hora pasada) -> Inasistencia.</label>
+  <label><input type="checkbox" data-k="cu15_4"> Medico no ve selector de medico y solo sus citas.</label>
+  <label><input type="checkbox" data-k="cu15_5"> Recepcionista no puede marcar atendida.</label>
+  <label><input type="checkbox" data-k="cu15_6"> Inasistencia antes de la hora: boton no aparece / error.</label>
+  <label><input type="checkbox" data-k="cu15_7"> Bitacora e historial_estado_cita se actualizan.</label>
+</div>
+
+<h3>CU16 Mis citas: reprogramar o cancelar (PACIENTE/RECEP/ADMIN)</h3>
+<div class="card">
+  <p class="nota">Ruta: citas/proximas -> citas/cambiar.</p>
+  <div class="ej">Paciente: carla.villarroel@correo.com. Reprogramar: nueva fecha 2026-11-09, motivo "Solicitud del paciente". Cancelar: motivo "El paciente no puede asistir por motivos personales".</div>
+  <label><input type="checkbox" data-k="cu16_1"> Listar citas proximas (paciente ve las suyas; personal busca por paciente/CI/codigo).</label>
+  <label><input type="checkbox" data-k="cu16_2"> Reprogramar a un cupo libre conserva codigo y pago.</label>
+  <label><input type="checkbox" data-k="cu16_3"> Cancelar exige motivo; pago pendiente se anula, pagado queda reembolsado.</label>
+  <label><input type="checkbox" data-k="cu16_4"> No se cambian citas ya iniciadas; limite de reprogramaciones (2) y 24 h de anticipacion.</label>
+  <label><input type="checkbox" data-k="cu16_5"> El cupo anterior queda libre.</label>
+</div>
+
+<h3>CU18 Reportes operativos (ADMIN/RECEP)</h3>
+<div class="card">
+  <p class="nota">Ruta: reportes. Exporta CSV (Excel).</p>
+  <div class="ej">Desde 2026-11-01 | Hasta 2026-11-30 | Tipo productividad. Descargar CSV.</div>
+  <label><input type="checkbox" data-k="cu18_1"> Productividad por medico.</label>
+  <label><input type="checkbox" data-k="cu18_2"> Ingresos diarios.</label>
+  <label><input type="checkbox" data-k="cu18_3"> Ausentismo por especialidad.</label>
+  <label><input type="checkbox" data-k="cu18_4"> Descarga CSV con tildes correctas.</label>
+  <label><input type="checkbox" data-k="cu18_5"> Periodo maximo de un ano validado.</label>
+</div>
+
+<h3>CU24 Notificaciones y recordatorios (ADMIN/RECEP)</h3>
+<div class="card">
+  <p class="nota">Ruta: notificaciones. Tarea diaria: notificaciones/tarea.</p>
+  <div class="ej">Enviar recordatorios de manana. Tarea sin sesion: http://localhost:8000/?r=notificaciones/tarea (debe responder "Tarea CU24 ejecutada...").</div>
+  <label><input type="checkbox" data-k="cu24_1"> Bandeja del usuario carga sus avisos.</label>
+  <label><input type="checkbox" data-k="cu24_2"> Marcar leida funciona.</label>
+  <label><input type="checkbox" data-k="cu24_3"> Personal ve avisos recientes y pendientes de envio.</label>
+  <label><input type="checkbox" data-k="cu24_4"> "Enviar recordatorios de manana" genera avisos.</label>
+  <label><input type="checkbox" data-k="cu24_5"> notificaciones/tarea responde OK sin sesion.</label>
+</div>
+
+<h3>CU25 Asistente virtual (VISITANTE/PACIENTE)</h3>
+<div class="card">
+  <p class="nota">Ruta: asistente. Funciona sin sesion.</p>
+  <div class="ej">Preguntas de prueba: "Como puedo cancelar una cita?", "mis citas", "horarios de atencion", "Que es un comprobante?".</div>
+  <label><input type="checkbox" data-k="cu25_1"> Chat carga (visitante y paciente).</label>
+  <label><input type="checkbox" data-k="cu25_2"> Pregunta de la base de conocimiento responde con su respuesta.</label>
+  <label><input type="checkbox" data-k="cu25_3"> "mis citas" lista las citas del paciente logueado.</label>
+  <label><input type="checkbox" data-k="cu25_4"> Pregunta sin respuesta se registra como SIN_RESPUESTA.</label>
+  <label><input type="checkbox" data-k="cu25_5"> Cerrar conversacion funciona.</label>
+</div>
+
+<h3>CU26 Base de conocimiento (ADMIN/RECEP)</h3>
+<div class="card">
+  <p class="nota">Ruta: conocimiento.</p>
+  <div class="ej">Nueva pregunta: Categoria CITAS | Pregunta "Como puedo cancelar una cita?" | Respuesta "Ingrese a Mis citas, seleccione la cita y presione Cancelar indicando el motivo." | Palabras clave "cancelar cita anular".</div>
+  <label><input type="checkbox" data-k="cu26_1"> Listar preguntas con filtros por categoria y texto.</label>
+  <label><input type="checkbox" data-k="cu26_2"> Crear nueva pregunta.</label>
+  <label><input type="checkbox" data-k="cu26_3"> Editar pregunta.</label>
+  <label><input type="checkbox" data-k="cu26_4"> Activar/desactivar pregunta.</label>
+  <label><input type="checkbox" data-k="cu26_5"> Se muestran las preguntas que el asistente no supo responder.</label>
+</div>
+
+<h2>5. Seguridad / permisos</h2>
+<div class="card">
+  <label><input type="checkbox" data-k="sec1"> Sin sesion, citas/agenda redirige al login.</label>
+  <label><input type="checkbox" data-k="sec2"> Paciente en citas/agenda -> "Acceso no autorizado".</label>
+  <label><input type="checkbox" data-k="sec3"> Medico solo ve sus citas en la agenda.</label>
+  <label><input type="checkbox" data-k="sec4"> CSRF: formulario sin token devuelve 419.</label>
+</div>
+
+<h2>6. URLs rapidas</h2>
+<div class="card">
+  <p>Login: http://localhost:8000/?r=sesion/formulario</p>
+  <p>Registro paciente: http://localhost:8000/?r=sesion/registro</p>
+  <p>Panel: http://localhost:8000/?r=panel</p>
+  <p>Agenda: http://localhost:8000/?r=citas/agenda</p>
+  <p>Mis citas: http://localhost:8000/?r=citas/proximas</p>
+  <p>Reportes: http://localhost:8000/?r=reportes</p>
+  <p>Notificaciones: http://localhost:8000/?r=notificaciones</p>
+  <p>Asistente: http://localhost:8000/?r=asistente</p>
+  <p>Conocimiento: http://localhost:8000/?r=conocimiento</p>
+</div>
+
+<script>
+const boxes = document.querySelectorAll('input[type=checkbox][data-k]');
+function load() { boxes.forEach(b => { if (localStorage.getItem(b.dataset.k) === '1') b.checked = true; updateLabel(b); }); updateProgress(); }
+function save(b) { localStorage.setItem(b.dataset.k, b.checked ? '1' : '0'); updateLabel(b); updateProgress(); }
+function updateLabel(b) { const l = b.closest('label'); if (l) l.classList.toggle('done', b.checked); }
+function updateProgress() { const total = boxes.length; const done = [...boxes].filter(b=>b.checked).length; document.getElementById('progreso').textContent = done + ' / ' + total + ' completadas'; }
+boxes.forEach(b => b.addEventListener('change', () => save(b)));
+function resetAll() { if (confirm('Reiniciar todas las marcas?')) { boxes.forEach(b => { b.checked=false; localStorage.removeItem(b.dataset.k); updateLabel(b); }); updateProgress(); } }
+load();
+</script>
+</body>
+</html>
+" path="C:\Users\prueb\Documents\Sistema-Web-para-Gestion-Citas-Medicas\docs\pruebas_completo.html"

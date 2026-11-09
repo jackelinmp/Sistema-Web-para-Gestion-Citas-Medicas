@@ -23,9 +23,31 @@ $enlace = fn(array $extra) => '?' . e(http_build_query($base + $extra));
 <?php if ($error): ?><div class="alerta error"><?= e($error) ?></div><?php endif; ?>
 
 <?php if ($paso === 1): ?>
+  <?php if (!empty($esPaciente)): ?>
+    <h3 class="pregunta-paso">¿Para quién es la cita?</h3>
+    <div class="opciones-paciente">
+      <form method="post" action="?r=citas/para-mi">
+        <?= campoCsrf() ?>
+        <button class="tarjeta-paciente">
+          <strong>Para mí</strong>
+          <small class="suave"><?= e(Sesion::usuario()['nombre'] ?? '') ?></small>
+        </button>
+      </form>
+      <?php foreach ($beneficiarios as $b): ?>
+        <a class="tarjeta-paciente" href="?<?= e(http_build_query(['r' => 'citas/nueva', 'paciente_id' => $b['persona_id'], 'fecha' => $p['fecha']])) ?>">
+          <strong><?= e($b['nombres'] . ' ' . $b['apellidos']) ?></strong>
+          <small class="suave"><?= preg_match('/-\d+$/', (string) $b['ci']) ? 'Sin CI' : 'CI ' . e($b['ci']) ?></small>
+        </a>
+      <?php endforeach; ?>
+      <a class="tarjeta-paciente nueva" href="?r=citas/otra-persona">
+        <strong>+ Para otra persona</strong>
+        <small class="suave">Hijo, familiar u otra persona</small>
+      </a>
+    </div>
+  <?php else: ?>
   <form class="filtros" method="get">
     <input type="hidden" name="r" value="citas/nueva">
-    <?php foreach (['especialidad_id', 'medico_id', 'hora_inicio'] as $k): if ($p[$k]): ?>
+    <?php foreach (['especialidad_id', 'medico_id', 'hora_inicio', 'origen'] as $k): if ($p[$k]): ?>
       <input type="hidden" name="<?= $k ?>" value="<?= e($p[$k]) ?>">
     <?php endif; endforeach; ?>
     <input type="hidden" name="fecha" value="<?= e($p['fecha']) ?>">
@@ -41,11 +63,12 @@ $enlace = fn(array $extra) => '?' . e(http_build_query($base + $extra));
         <tr><td><?= e($pa['nro_expediente']) ?></td><td><?= e($pa['apellidos'] . ', ' . $pa['nombres']) ?></td>
             <td><?= e($pa['ci']) ?></td><td><?= fecha($pa['fecha_nacimiento']) ?></td>
             <td class="acciones"><a class="btn pequeno" href="?<?= e(http_build_query(['r' => 'citas/nueva', 'paciente_id' => $pa['persona_id'],
-                'fecha' => $p['fecha'], 'especialidad_id' => $p['especialidad_id'], 'medico_id' => $p['medico_id'], 'hora_inicio' => $p['hora_inicio']])) ?>">Seleccionar</a></td></tr>
+                'fecha' => $p['fecha'], 'especialidad_id' => $p['especialidad_id'], 'medico_id' => $p['medico_id'], 'hora_inicio' => $p['hora_inicio'], 'origen' => $p['origen']])) ?>">Seleccionar</a></td></tr>
       <?php endforeach; ?>
       <?php if (!$pacientes): ?><tr><td colspan="5" class="vacio">No se encontró un paciente con los datos ingresados.</td></tr><?php endif; ?>
       </tbody>
     </table>
+  <?php endif; ?>
   <?php endif; ?>
 
 <?php else: ?>
@@ -101,7 +124,7 @@ $enlace = fn(array $extra) => '?' . e(http_build_query($base + $extra));
     </dl>
     <form method="post" action="?r=citas/confirmar" class="formulario">
       <?= campoCsrf() ?>
-      <?php foreach (['paciente_id', 'especialidad_id', 'medico_id', 'fecha', 'hora_inicio'] as $k): ?>
+      <?php foreach (['paciente_id', 'especialidad_id', 'medico_id', 'fecha', 'hora_inicio', 'origen'] as $k): ?>
         <input type="hidden" name="<?= $k ?>" value="<?= e($p[$k]) ?>">
       <?php endforeach; ?>
       <label>Motivo de la consulta (opcional)<textarea name="motivo_consulta" maxlength="250" rows="2"></textarea></label>

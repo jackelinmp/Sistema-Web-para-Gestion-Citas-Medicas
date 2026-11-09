@@ -1,6 +1,7 @@
 <?php
 namespace App\Controles\Citas;
 
+use App\Controles\Comunicacion\ControlGestionarNotificaciones;
 use App\Controles\Pacientes\ControlValidarRestricciones;
 use App\Entidades\Bitacora;
 use App\Entidades\Cita;
@@ -8,6 +9,7 @@ use App\Entidades\Especialidad;
 use App\Entidades\Medico;
 use App\Entidades\Paciente;
 use App\Entidades\Pago;
+use App\Entidades\ParametroSistema;
 use App\Nucleo\Conexion;
 use App\Nucleo\ControlBase;
 use App\Nucleo\Sesion;
@@ -17,6 +19,7 @@ use App\Nucleo\Sesion;
  * Interfaces: IUAgendarCita.  Entidades: Paciente, Especialidad, Medico, Cita, Pago, Bitacora.
  * Incluye («include»): CU06 ControlValidarRestricciones y CU13 ControlVerificarDisponibilidad.
  * Asistente de 4 pasos por parámetros GET: paciente_id -> especialidad_id + fecha (+ medico_id) -> cupo -> confirmar.
+ * Usuario paciente, paso 1 «¿Para quién es la cita?»: «Para mí» (seleccionarParaMi) o «Para otra persona» (CU22).
  */
 final class ControlAgendarCita extends ControlBase
 {
@@ -29,11 +32,24 @@ final class ControlAgendarCita extends ControlBase
         Sesion::exigirPermiso(self::MODULO, 'R');
         $disp = new ControlVerificarDisponibilidad();
         $p = $this->leerParametros($_GET);
+        if ($this->esPaciente() && empty($_GET['paciente_id'])) {
+            $p['paciente_id'] = null;                               // paso 1: ¿para quién es la cita?
+        }
         $datos = ['p' => $p, 'pacientes' => [], 'paciente' => null, 'especialidades' => [], 'medicos' => [],
-                  'cupos' => null, 'resumen' => null, 'error' => null];
+                  'cupos' => null, 'resumen' => null, 'error' => null,
+                  'esPaciente' => $this->esPaciente(), 'beneficiarios' => []];
 
         if (!$p['paciente_id']) {                                   // paso 1
-            $datos['pacientes'] = $p['criterio'] !== '' ? (new Paciente())->buscar($p['criterio']) : [];
+            if ($this->esPaciente()) {                              // ¿para quién es la cita? «Para mí», las personas ya agregadas y «Para otra persona»
+                $propio = (int) Sesion::usuario()['persona_id'];
+                foreach ($this->pacientesACargo() as $id) {
+                    if ($id !== $propio && ($fila = (new Paciente())->obtenerPorId($id))) {
+                        $datos['beneficiarios'][] = $fila;
+                    }
+                }
+            } else {
+                $datos['pacientes'] = $p['criterio'] !== '' ? (new Paciente())->buscar($p['criterio']) : [];
+            }
             $this->vista('Citas/IUAgendarCita', $datos);
             return;
         }
@@ -64,6 +80,25 @@ final class ControlAgendarCita extends ControlBase
             $datos['resumen'] = $this->mostrarResumen($p);
         }
         $this->vista('Citas/IUAgendarCita', $datos);
+    }
+
+    /**
+     * «Para mí»: el usuario reserva para sí mismo. Si todavía no es paciente (tiene cuenta solo para
+     * manejar las citas de sus hijos), se abre su expediente en este momento.
+     */
+    public function seleccionarParaMi(): void
+    {
+        Sesion::exigirPermiso(self::MODULO, 'R');
+        if (!$this->esPaciente()) {
+            $this->redirigir('citas/nueva');
+        }
+        $propio = (int) Sesion::usuario()['persona_id'];
+        if (!(new Paciente())->obtenerPorId($propio)) {
+            $expediente = Conexion::transaccion(fn() => (new Paciente())->abrirExpediente($propio));
+            (new Bitacora())->registrarEvento($this->idUsuario(), 'ABRIR_EXPEDIENTE', 'Expediente ' . $expediente . ' abierto al reservar en línea',
+                                              $this->ip(), 'paciente', $propio);
+        }
+        $this->redirigir('citas/nueva&paciente_id=' . $propio);
     }
 
     /** Resumen antes de confirmar: paciente, especialidad, médico, fecha, hora y costo. */
@@ -119,8 +154,23 @@ final class ControlAgendarCita extends ControlBase
             Sesion::flash('error', $this->mensajeBaseDatos($e));
             $this->redirigir($volver);
         }
-        Sesion::flash('ok', 'Cita ' . $cita['codigo'] . ' registrada en estado Programada.');
-        $this->redirigir('citas/constancia&id=' . (int) $cita['id']);
+        (new ControlGestionarNotificaciones())->notificarCita((int) $cita['id'], 'CONFIRMACION', 'Cita registrada',
+            'Registramos su cita ' . $cita['codigo'] . ' del ' . date('d/m/Y', strtotime($p['fecha'])) . ' a las '
+            . substr((string) $p['hora_inicio'], 0, 5) . '. Complete el pago para confirmarla.');
+        // La cita se confirma con el pago en el mismo momento (en línea o en ventanilla); el horario se aparta
+        // solo mientras dura el plazo para pagar. Únicamente la cita que saca el médico queda con pago pendiente.
+        $origen = self::ORIGEN[Sesion::usuario()['rol']] ?? 'RECEPCION';
+        if ($origen === 'MEDICO') {
+            Sesion::flash('ok', 'Cita ' . $cita['codigo'] . ' registrada con pago pendiente. El paciente la paga en línea o en recepción.');
+            $this->redirigir('citas/constancia&id=' . (int) $cita['id']);
+        }
+        $minutos = (int) (new ParametroSistema())->obtenerValor('MINUTOS_PLAZO_PAGO', '30');
+        Sesion::flash('ok', $origen === 'PORTAL'
+            ? 'Cita ' . $cita['codigo'] . ' registrada. Pague ahora para confirmarla: tiene ' . $minutos
+              . ' minutos; si no paga, la cita se anula y el horario queda libre.'
+            : 'Cita ' . $cita['codigo'] . ' registrada. Registre el pago ahora para confirmarla; si no se paga en '
+              . $minutos . ' minutos, la cita se anula y el horario queda libre.');
+        $this->redirigir('pagos/detalle&cita_id=' . (int) $cita['id']);
     }
 
     /** Constancia de la cita registrada. */
@@ -131,10 +181,7 @@ final class ControlAgendarCita extends ControlBase
         if (!$cita) {
             $this->redirigir('citas/nueva');
         }
-        $u = Sesion::usuario();
-        if ($u['rol'] === 'PACIENTE' && (int) $cita['paciente_id'] !== (int) $u['persona_id']) {
-            Sesion::denegar('Intento de ver la cita ' . (int) $cita['id'] . ' de otro paciente');
-        }
+        $this->exigirAccesoPaciente(self::MODULO, (int) $cita['paciente_id']);
         $this->vista('Citas/IUConstanciaCita', ['cita' => $cita]);
     }
 
@@ -142,9 +189,12 @@ final class ControlAgendarCita extends ControlBase
     {
         $usuario = Sesion::usuario();
         $pacienteId = (int) ($origen['paciente_id'] ?? 0) ?: null;
-        if (($usuario['rol'] ?? '') === 'PACIENTE') {               // el paciente solo agenda para sí mismo
-            $pacienteId = (int) $usuario['persona_id'];
+        if (($usuario['rol'] ?? '') === 'PACIENTE') {               // el paciente agenda para sí o para un familiar (CU22)
+            $aCargo = $this->pacientesACargo() ?? [];
+            $pacienteId = in_array($pacienteId, $aCargo, true) ? $pacienteId : (int) $usuario['persona_id'];
         }
+        $rol = $usuario['rol'] ?? '';
+        $origenCita = self::ORIGEN[$rol] ?? 'RECEPCION';
         return [
             'criterio'        => trim((string) ($origen['criterio'] ?? '')),
             'paciente_id'     => $pacienteId,
@@ -153,11 +203,12 @@ final class ControlAgendarCita extends ControlBase
             'fecha'           => (string) ($origen['fecha'] ?? date('Y-m-d')),
             'hora_inicio'     => (string) ($origen['hora_inicio'] ?? ''),
             'motivo_consulta' => trim((string) ($origen['motivo_consulta'] ?? '')),
+            'origen'          => $origenCita,
         ];
     }
 
     /** Traduce los rechazos de la base (EXCLUDE y triggers) a los mensajes del CU. */
-    private function mensajeBaseDatos(\PDOException $e): string
+    protected function mensajeBaseDatos(\PDOException $e): string
     {
         $m = $e->getMessage();
         if (str_contains($m, 'ex_cita_paciente')) {
