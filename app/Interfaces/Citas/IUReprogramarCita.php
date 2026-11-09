@@ -89,14 +89,14 @@ $enlace = fn(array $extra) => '?' . e(http_build_query($base + $extra));
   <?php endif; ?>
 
   <h3>Cancelar la cita</h3>
-  <form method="post" action="?r=citas/cancelar" class="formulario" data-confirmar="¿Cancelar la cita <?= e($cita['codigo']) ?>? El horario quedará libre para otro paciente.">
+  <form method="post" action="?r=citas/cancelar" class="formulario" data-confirmar="¿Cancelar la cita <?= e($cita['codigo']) ?>? El horario quedará libre para otro paciente.<?= $cita['pago_estado'] === 'PAGADO' ? ' El pago no se devuelve.' : '' ?>">
     <?= campoCsrf() ?>
     <input type="hidden" name="cita_id" value="<?= (int) $cita['id'] ?>">
     <label><span class="obligatorio">Motivo de la cancelación</span>
       <textarea name="motivo" maxlength="200" rows="2" required minlength="5"></textarea>
     </label>
     <?php if ($cita['pago_estado'] === 'PAGADO'): ?>
-      <div class="alerta aviso">La cita ya está pagada: al cancelarla el pago queda para devolución en recepción. Si solo necesita otro horario, reprográmela.</div>
+      <div class="alerta aviso">La cita ya está pagada: si la cancela, el pago no se devuelve (política de la clínica). Si solo necesita otro horario, reprográmela.</div>
     <?php endif; ?>
     <div class="botones">
       <a class="btn secundario" href="?r=citas/proximas">Volver</a>

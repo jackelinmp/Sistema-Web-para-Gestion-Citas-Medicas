@@ -24,6 +24,7 @@ final class ServicioStripe
             'success_url' => $urlExito,
             'cancel_url' => $urlCancelado,
             'client_reference_id' => (string) $citaId,
+            'expires_at' => time() + 31 * 60,       // el plazo para pagar es corto: el pago no queda abierto por 24 horas
             'metadata' => ['cita_id' => (string) $citaId],
             'line_items' => [[
                 'quantity' => 1,
@@ -74,6 +75,11 @@ final class ServicioStripe
         $url = rtrim((string) Config::obtener('STRIPE_API_BASE', 'https://api.stripe.com'), '/') . $ruta;
         $ch = curl_init($url);
         $opciones = [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20, CURLOPT_USERPWD => Config::obtener('STRIPE_SECRET_KEY') . ':'];
+        // Certificados raíz para verificar a Stripe: PHP en Windows (XAMPP o «php -S») no los trae.
+        // Si php.ini no indica curl.cainfo, se usa el paquete incluido en config/cacert.pem.
+        if ((string) ini_get('curl.cainfo') === '' && is_file(RAIZ . '/config/cacert.pem')) {
+            $opciones[CURLOPT_CAINFO] = RAIZ . '/config/cacert.pem';
+        }
         if ($metodo === 'POST') {
             $opciones[CURLOPT_POST] = true;
             $opciones[CURLOPT_POSTFIELDS] = http_build_query($datos);

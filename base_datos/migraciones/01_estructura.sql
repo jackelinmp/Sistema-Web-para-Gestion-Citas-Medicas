@@ -1,22 +1,32 @@
--- ===== Clínica Vida Salud: BASE DE DATOS COMPLETA (esquema + funciones + triggers + datos mínimos + vistas + seguridad Supabase) =====
--- Pega este único archivo en el SQL Editor de Supabase (o ejecútalo con psql) sobre una base vacía.
--- Queda lista para usar: entra como admin@clinicavidasalud.com / Admin123* y crea todo lo demás desde el sistema.
-
--- ################ 01_esquema.sql ################
 -- =====================================================================================
 --  Clínica Vida Salud — Sistema Web de Gestión de Citas Médicas
---  01_esquema.sql : extensiones, secuencias, tablas, restricciones e índices (PostgreSQL 14+)
---  Funciona igual en PostgreSQL local y en Supabase (SQL Editor).
---  Orden: 01 → 02 → 03 → 04 → 05 (solo Supabase). Ejemplos opcionales: OPCIONAL_datos_de_ejemplo.sql
+--  01_estructura.sql : BASE DE DATOS FINAL (estructura completa, PostgreSQL 14+ / Supabase)
+--
+--  Un solo script sobre una base vacía. Ya incluye todo lo de las migraciones 01 a 12:
+--  no hace falta ejecutar ninguna migración después.
+--    1. Extensiones y secuencias          4. Datos mínimos (roles, permisos, parámetros,
+--    2. Tablas, restricciones e índices      administrador y catálogos básicos)
+--    3. Funciones, procedimientos y       5. Vistas
+--       triggers                          6. Seguridad de Supabase (RLS)
+--  Luego, opcional: 02_poblacion.sql (datos de ejemplo para pruebas y la defensa).
+--  Administrador inicial: admin@clinicavidasalud.com / Admin123* (pide cambiar la clave al entrar)
 -- =====================================================================================
+
+-- ======================= 1. EXTENSIONES Y SECUENCIAS =================================
 CREATE EXTENSION IF NOT EXISTS btree_gist;      -- necesaria para impedir horarios superpuestos (EXCLUDE)
 
--- ---------- Secuencias de códigos legibles ----------
+-- Secuencias de códigos legibles
 CREATE SEQUENCE IF NOT EXISTS seq_expediente  START 1;   -- EXP-000001
 CREATE SEQUENCE IF NOT EXISTS seq_cita_codigo START 1;   -- CIT-000001
 CREATE SEQUENCE IF NOT EXISTS seq_comprobante START 1;   -- REC-2026-00001
 
--- ======================= SEGURIDAD (CU01, CU02, CU03, CU04) ===========================
+-- ======================= 2. TABLAS =====================================================
+-- Generalización: PERSONA es la superclase con los datos comunes. PACIENTE y MEDICO son
+-- subclases (su PK es también FK a persona: herencia por tabla). USUARIO es la cuenta de
+-- acceso de una persona (0..1): una persona puede ser paciente sin cuenta, tener cuenta sin
+-- ser paciente (un padre que solo saca fichas para su hijo) o ser médico y paciente a la vez.
+
+-- ----------------------- SEGURIDAD (CU01, CU02, CU03, CU04) ---------------------------
 CREATE TABLE persona (
     id               BIGSERIAL    PRIMARY KEY,
     ci               VARCHAR(20)  NOT NULL UNIQUE,
@@ -26,8 +36,11 @@ CREATE TABLE persona (
     sexo             CHAR(1)      NOT NULL CHECK (sexo IN ('F', 'M')),
     telefono         VARCHAR(20),
     direccion        VARCHAR(200),
-    fecha_registro   TIMESTAMPTZ  NOT NULL DEFAULT now()
+    tutor_id         BIGINT       REFERENCES persona(id),   -- responsable legal de un menor (CU22, CU24)
+    fecha_registro   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT ck_persona_tutor CHECK (tutor_id IS NULL OR tutor_id <> id)
 );
+CREATE INDEX idx_persona_tutor ON persona (tutor_id);
 
 CREATE TABLE rol (
     id          SMALLSERIAL PRIMARY KEY,
@@ -95,7 +108,7 @@ CREATE INDEX idx_bitacora_fecha   ON bitacora (fecha_hora DESC);
 CREATE INDEX idx_bitacora_usuario ON bitacora (usuario_id);
 CREATE INDEX idx_bitacora_accion  ON bitacora (accion);
 
--- ======================= PACIENTES (CU05, CU06) =======================================
+-- ----------------------- PACIENTES (CU05, CU06) ----------------------------------------
 CREATE TABLE aseguradora (
     id     SMALLSERIAL  PRIMARY KEY,
     nombre VARCHAR(80)  NOT NULL UNIQUE,
@@ -126,7 +139,7 @@ CREATE TABLE ficha_clinica (                            -- composición 1..1 con
     fecha_actualizacion      TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
--- ======================= CATÁLOGO MÉDICO (CU08, CU09, CU11) ===========================
+-- ----------------------- CATÁLOGO MÉDICO (CU08, CU09, CU11) ----------------------------
 CREATE TABLE especialidad (
     id             SMALLSERIAL   PRIMARY KEY,
     nombre         VARCHAR(80)   NOT NULL,
@@ -182,7 +195,7 @@ CREATE TABLE bloqueo_agenda (                           -- vacaciones, permisos,
 );
 CREATE INDEX idx_bloqueo_medico ON bloqueo_agenda (medico_id, fecha_inicio);
 
--- ======================= CITAS Y PAGOS (CU13, CU14, CU19) =============================
+-- ----------------------- CITAS Y PAGOS (CU13, CU14, CU19) ------------------------------
 CREATE TABLE cita (
     id              BIGSERIAL    PRIMARY KEY,
     codigo          VARCHAR(20)  NOT NULL UNIQUE
@@ -196,7 +209,9 @@ CREATE TABLE cita (
     estado          VARCHAR(12)  NOT NULL DEFAULT 'PROGRAMADA'
                     CHECK (estado IN ('PROGRAMADA', 'CONFIRMADA', 'ATENDIDA', 'CANCELADA', 'INASISTENCIA')),
     motivo_consulta VARCHAR(300),
-    origen          VARCHAR(12)  NOT NULL DEFAULT 'RECEPCION' CHECK (origen IN ('RECEPCION', 'MEDICO', 'PORTAL')),
+    origen          VARCHAR(12)  NOT NULL DEFAULT 'RECEPCION' CHECK (origen IN ('RECEPCION', 'MEDICO', 'PORTAL', 'CHATBOT')),
+    motivo_cancelacion VARCHAR(200),                     -- CU16
+    veces_reprogramada SMALLINT  NOT NULL DEFAULT 0 CHECK (veces_reprogramada >= 0),   -- CU16
     registrado_por  BIGINT       NOT NULL REFERENCES usuario(id),
     fecha_registro  TIMESTAMPTZ  NOT NULL DEFAULT now(),
     CONSTRAINT ck_cita_horas CHECK (hora_fin > hora_inicio),
@@ -236,6 +251,10 @@ CREATE TABLE pago (
     estado             VARCHAR(12)   NOT NULL DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE', 'PAGADO', 'ANULADO', 'REEMBOLSADO')),
     metodo             VARCHAR(15)   CHECK (metodo IN ('EFECTIVO', 'TARJETA', 'QR', 'TRANSFERENCIA', 'STRIPE', 'SEGURO')),
     referencia_externa VARCHAR(100),                    -- p. ej. id de la sesión de Stripe (CU19)
+    copago             NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (copago >= 0),   -- parte que paga el paciente con seguro
+    copago_metodo      VARCHAR(15)   CHECK (copago_metodo IS NULL OR copago_metodo IN ('EFECTIVO','QR','TRANSFERENCIA','TARJETA')),
+    copago_referencia  VARCHAR(100),
+    copago_fecha       TIMESTAMPTZ,
     registrado_por     BIGINT        NOT NULL REFERENCES usuario(id),
     fecha_registro     TIMESTAMPTZ   NOT NULL DEFAULT now(),
     fecha_pago         TIMESTAMPTZ
@@ -263,8 +282,8 @@ CREATE TABLE notificacion (
 );
 CREATE INDEX idx_notificacion_usuario ON notificacion (usuario_id, leida);
 
--- ======================= VÍNCULOS FAMILIARES, EVENTOS (Ciclo 2) =======================
-CREATE TABLE vinculo_familiar (                         -- el titular puede gestionar citas de sus familiares
+-- ----------------------- VÍNCULOS FAMILIARES, EVENTOS (Ciclo 2) ------------------------
+CREATE TABLE vinculo_familiar (                         -- personas a cargo de una cuenta (CU14 «Para otra persona», CU22)
     id             BIGSERIAL   PRIMARY KEY,
     paciente_id    BIGINT      NOT NULL REFERENCES persona(id) ON DELETE CASCADE,            -- responsable (con cuenta; no necesita expediente)
     familiar_id    BIGINT      NOT NULL REFERENCES paciente(persona_id) ON DELETE CASCADE,
@@ -273,6 +292,7 @@ CREATE TABLE vinculo_familiar (                         -- el titular puede gest
     CONSTRAINT ck_vinculo_distintos CHECK (paciente_id <> familiar_id),
     CONSTRAINT uq_vinculo UNIQUE (paciente_id, familiar_id)
 );
+CREATE INDEX idx_vinculo_familiar ON vinculo_familiar (familiar_id);
 
 CREATE TABLE evento_paciente (                          -- bandeja de eventos (cola) para notificaciones y chat
     id           BIGSERIAL    PRIMARY KEY,
@@ -284,7 +304,7 @@ CREATE TABLE evento_paciente (                          -- bandeja de eventos (c
 );
 CREATE INDEX idx_evento_pendiente ON evento_paciente (procesado, fecha_evento);
 
--- ======================= EXÁMENES DE LABORATORIO (Ciclo 2) ============================
+-- ----------------------- EXÁMENES DE LABORATORIO (Ciclo 2) -----------------------------
 CREATE TABLE tipo_examen (
     id          SMALLSERIAL   PRIMARY KEY,
     nombre      VARCHAR(80)   NOT NULL,
@@ -313,10 +333,11 @@ CREATE TABLE resultado_laboratorio (
     archivo_nombre       VARCHAR(150),
     tipo_archivo         VARCHAR(10)  CHECK (tipo_archivo IN ('PDF', 'JPG', 'PNG')),
     tamano_bytes         INTEGER      CHECK (tamano_bytes IS NULL OR tamano_bytes > 0),
+    archivo              BYTEA,                         -- contenido del PDF/JPG/PNG (máx. 2 MB, lo controla la aplicación)
     fecha_resultado      TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
--- ======================= ASISTENTE VIRTUAL / CHAT (Ciclo 2) ===========================
+-- ----------------------- ASISTENTE VIRTUAL / CHAT (Ciclo 2) ----------------------------
 CREATE TABLE conversacion (
     id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     paciente_id  BIGINT      REFERENCES paciente(persona_id) ON DELETE SET NULL,   -- 0..1: puede ser un visitante
@@ -347,12 +368,41 @@ CREATE TABLE pregunta_frecuente (
     fecha_actualizacion TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
--- ################ 02_funciones_triggers.sql ################
--- =====================================================================================
---  02_funciones_triggers.sql : funciones, procedimientos almacenados y triggers
---  Lo que el código PHP llama directamente: fn_registrar_bitacora, fn_cupos_disponibles,
---  fn_especialidades_permitidas. El resto son reglas que la base hace cumplir sola.
--- =====================================================================================
+-- ----------------------- Descripción de las tablas (diccionario en el catálogo) ---------
+COMMENT ON TABLE persona               IS 'Superclase: datos comunes de toda persona (paciente, médico, personal, responsable)';
+COMMENT ON TABLE rol                   IS 'Roles del sistema: ADMINISTRADOR, RECEPCIONISTA, MEDICO, PACIENTE';
+COMMENT ON TABLE permiso               IS 'Acción (C, R, M, A) sobre un módulo del sistema';
+COMMENT ON TABLE rol_permiso           IS 'Matriz RBAC: permisos de cada rol (relación muchos a muchos)';
+COMMENT ON TABLE usuario               IS 'Cuenta de acceso (0..1 por persona); contraseña con password_hash';
+COMMENT ON TABLE token_recuperacion    IS 'Enlaces de un solo uso para recuperar la contraseña (se guarda el hash)';
+COMMENT ON TABLE parametro_sistema     IS 'Parámetros de negocio editables sin tocar el código';
+COMMENT ON TABLE bitacora              IS 'Auditoría de acciones; solo inserción (RN14)';
+COMMENT ON TABLE aseguradora           IS 'Seguros médicos con convenio';
+COMMENT ON TABLE paciente              IS 'Subclase de persona: expediente clínico';
+COMMENT ON TABLE ficha_clinica         IS 'Datos clínicos básicos; composición 1..1 con paciente';
+COMMENT ON TABLE especialidad          IS 'Especialidades con costo y restricciones de edad y sexo';
+COMMENT ON TABLE medico                IS 'Subclase de persona: profesional médico';
+COMMENT ON TABLE medico_especialidad   IS 'Especialidades que ejerce cada médico (muchos a muchos)';
+COMMENT ON TABLE jornada               IS 'Horario semanal de atención del médico (una fila por día)';
+COMMENT ON TABLE bloqueo_agenda        IS 'Ausencias del médico: vacaciones, permisos, reuniones';
+COMMENT ON TABLE cita                  IS 'Cita médica con su estado; sin cruces por médico ni por paciente';
+COMMENT ON TABLE historial_estado_cita IS 'Trazabilidad de cada cambio de estado de la cita';
+COMMENT ON TABLE pago                  IS 'Pago de la cita (0..1), con copago cuando lo cubre un seguro';
+COMMENT ON TABLE comprobante           IS 'Comprobante correlativo de un pago aprobado';
+COMMENT ON TABLE notificacion          IS 'Avisos para la cuenta del paciente o de su responsable';
+COMMENT ON TABLE vinculo_familiar      IS 'Personas a cargo de una cuenta (hijos, familiares u otras personas)';
+COMMENT ON TABLE evento_paciente       IS 'Cola de eventos que alimenta las notificaciones';
+COMMENT ON TABLE tipo_examen           IS 'Catálogo de exámenes de laboratorio';
+COMMENT ON TABLE solicitud_examen      IS 'Examen solicitado en una cita confirmada o atendida';
+COMMENT ON TABLE resultado_laboratorio IS 'Resultado de un examen (texto y archivo adjunto)';
+COMMENT ON TABLE conversacion          IS 'Sesión de chat con el asistente virtual (paciente o visitante)';
+COMMENT ON TABLE mensaje_chat          IS 'Mensajes de una conversación';
+COMMENT ON TABLE pregunta_frecuente    IS 'Base de conocimiento del asistente virtual';
+
+-- ======================= 3. FUNCIONES, PROCEDIMIENTOS Y TRIGGERS =====================
+-- Lo que el código PHP llama directamente: fn_registrar_bitacora, fn_cupos_disponibles,
+-- fn_especialidades_permitidas, sp_cambiar_estado_cita, sp_reprogramar_cita, sp_registrar_pago.
+-- El resto son reglas que la base hace cumplir sola (triggers).
 
 -- ---------- Bitácora (RN14): registrar y proteger -------------------------------------
 CREATE OR REPLACE FUNCTION fn_registrar_bitacora(
@@ -500,8 +550,9 @@ CREATE TRIGGER tg_comprobante_solo_pagado
     BEFORE INSERT ON comprobante
     FOR EACH ROW EXECUTE FUNCTION tg_comprobante_solo_pagado();
 
--- ---------- Procedimientos almacenados para el resto del ciclo de vida de la cita -----
--- (los usarán los casos de uso del Ciclo 2: confirmar, cancelar, registrar asistencia)
+-- ---------- Ciclo de vida de la cita (CU15, CU16, CU17) -------------------------------
+-- Transiciones válidas: PROGRAMADA -> CONFIRMADA | CANCELADA | INASISTENCIA
+--                       CONFIRMADA -> ATENDIDA | CANCELADA | INASISTENCIA
 CREATE OR REPLACE FUNCTION sp_cambiar_estado_cita(p_cita BIGINT, p_nuevo VARCHAR, p_usuario BIGINT)
 RETURNS VOID
 LANGUAGE plpgsql AS $$
@@ -518,7 +569,10 @@ BEGIN
     END IF;
     PERFORM set_config('app.usuario_id', p_usuario::text, TRUE);
     UPDATE cita SET estado = p_nuevo WHERE id = p_cita;
-    IF p_nuevo = 'CANCELADA' THEN
+    IF p_nuevo = 'CANCELADA' THEN            -- pendiente: se anula; ya cobrado: se devuelve
+        UPDATE pago SET estado = CASE estado WHEN 'PENDIENTE' THEN 'ANULADO' ELSE 'REEMBOLSADO' END
+         WHERE cita_id = p_cita AND estado IN ('PENDIENTE', 'PAGADO');
+    ELSIF p_nuevo = 'INASISTENCIA' THEN
         UPDATE pago SET estado = 'ANULADO' WHERE cita_id = p_cita AND estado = 'PENDIENTE';
     END IF;
     PERFORM fn_registrar_bitacora(p_usuario, 'CITA_' || p_nuevo, 'Cita ' || p_cita || ' pasa de ' || v_actual || ' a ' || p_nuevo,
@@ -526,6 +580,46 @@ BEGIN
 END;
 $$;
 
+-- CU16: la MISMA cita cambia de médico (de la misma especialidad), fecha y hora; conserva código y pago.
+CREATE OR REPLACE FUNCTION sp_reprogramar_cita(p_cita BIGINT, p_medico BIGINT, p_fecha DATE,
+                                               p_hora_inicio TIME, p_hora_fin TIME, p_usuario BIGINT)
+RETURNS VOID
+LANGUAGE plpgsql AS $$
+DECLARE
+    v cita%ROWTYPE;
+BEGIN
+    SELECT * INTO v FROM cita WHERE id = p_cita FOR UPDATE;
+    IF v.id IS NULL THEN
+        RAISE EXCEPTION 'La cita % no existe', p_cita;
+    END IF;
+    IF v.estado NOT IN ('PROGRAMADA', 'CONFIRMADA') THEN
+        RAISE EXCEPTION 'Solo se puede reprogramar una cita programada o confirmada';
+    END IF;
+    IF p_fecha + p_hora_inicio < localtimestamp THEN
+        RAISE EXCEPTION 'No se puede reprogramar a una fecha u hora pasada';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM medico WHERE persona_id = p_medico AND estado = 'ACTIVO') THEN
+        RAISE EXCEPTION 'El médico seleccionado no está activo';
+    END IF;
+    PERFORM set_config('app.usuario_id', p_usuario::text, TRUE);
+    -- ex_cita_medico y ex_cita_paciente siguen impidiendo horarios superpuestos;
+    -- fk_cita_medico_especialidad exige que el nuevo médico ejerza la misma especialidad.
+    UPDATE cita
+       SET medico_id = p_medico, fecha = p_fecha, hora_inicio = p_hora_inicio, hora_fin = p_hora_fin,
+           veces_reprogramada = veces_reprogramada + 1
+     WHERE id = p_cita;
+    INSERT INTO evento_paciente (paciente_id, tipo_evento, payload)
+    VALUES (v.paciente_id, 'CITA_REPROGRAMADA',
+            jsonb_build_object('cita_id', v.id, 'codigo', v.codigo, 'estado', v.estado,
+                               'fecha', p_fecha, 'hora_inicio', p_hora_inicio, 'medico_id', p_medico,
+                               'fecha_anterior', v.fecha, 'hora_anterior', v.hora_inicio));
+    PERFORM fn_registrar_bitacora(p_usuario, 'CITA_REPROGRAMADA',
+        'Cita ' || v.codigo || ' pasa del ' || v.fecha || ' ' || to_char(v.hora_inicio, 'HH24:MI')
+        || ' al ' || p_fecha || ' ' || to_char(p_hora_inicio, 'HH24:MI'), NULL, 'cita', p_cita);
+END;
+$$;
+
+-- CU19: cobra el pago pendiente de la cita y emite el comprobante (devuelve su número).
 CREATE OR REPLACE FUNCTION sp_registrar_pago(p_cita BIGINT, p_metodo VARCHAR, p_usuario BIGINT, p_referencia VARCHAR DEFAULT NULL)
 RETURNS VARCHAR                                          -- devuelve el nro. de comprobante
 LANGUAGE plpgsql AS $$
@@ -578,10 +672,13 @@ BEGIN
      WHERE s.id = NEW.solicitud_examen_id;
     INSERT INTO evento_paciente (paciente_id, tipo_evento, payload)
     VALUES (v_paciente, 'RESULTADO_LISTO', jsonb_build_object('solicitud_id', NEW.solicitud_examen_id, 'examen', v_examen));
+    -- aviso a la cuenta del paciente o, si es un menor sin cuenta, a la de su responsable (tutor)
     INSERT INTO notificacion (usuario_id, tipo, canal, asunto, mensaje)
     SELECT u.id, 'SISTEMA', 'CORREO', 'Resultado de laboratorio disponible',
-           'Su resultado de ' || v_examen || ' ya está disponible en el sistema.'
-      FROM usuario u WHERE u.persona_id = v_paciente;
+           'El resultado de ' || v_examen || ' ya está disponible en el sistema.'
+      FROM persona p
+      JOIN usuario u ON u.persona_id = COALESCE((SELECT us.persona_id FROM usuario us WHERE us.persona_id = p.id), p.tutor_id)
+     WHERE p.id = v_paciente AND u.estado = 'HABILITADA';
     RETURN NEW;
 END;
 $$;
@@ -650,12 +747,9 @@ LANGUAGE sql STABLE AS $$
      ORDER BY f.id;
 $$;
 
--- ################ 03_datos_base.sql ################
--- =====================================================================================
---  03_datos_base.sql : datos mínimos para que el sistema funcione (roles, permisos,
---  parámetros y el administrador inicial. Todo lo demás (especialidades, médicos, pacientes, citas...) se crea desde el sistema.)
---  Administrador inicial:  admin@clinicavidasalud.com  /  Admin123*   (pide cambiar la clave al entrar)
--- =====================================================================================
+-- ======================= 4. DATOS MÍNIMOS ============================================
+-- Roles, permisos, parámetros, administrador inicial y catálogos sin pantalla de alta.
+-- Administrador inicial: admin@clinicavidasalud.com / Admin123* (pide cambiar la clave al entrar)
 INSERT INTO rol (nombre, descripcion) VALUES
  ('ADMINISTRADOR', 'Control total del sistema'),
  ('RECEPCIONISTA', 'Registra pacientes y agenda citas'),
@@ -669,7 +763,7 @@ INSERT INTO permiso (modulo, accion) VALUES
  ('AGENDAS','C'),('AGENDAS','M'),
  ('CITAS','C'),('CITAS','R'),('CITAS','M'),
  ('SEGURIDAD','C'),('SEGURIDAD','R'),('SEGURIDAD','M'),('SEGURIDAD','A'),
- -- módulos del Ciclo 2 (el código del Ciclo 1 aún no los usa)
+ -- módulos del Ciclo 2
  ('EXAMENES','C'),('EXAMENES','R'),('EXAMENES','M'),('PAGOS','C'),('PAGOS','R'),('REPORTES','C'),('COMUNICACION','C'),('COMUNICACION','M');
 
 -- ADMINISTRADOR: todos los permisos
@@ -677,7 +771,8 @@ INSERT INTO rol_permiso SELECT r.id, p.id FROM rol r CROSS JOIN permiso p WHERE 
 -- RECEPCIONISTA
 INSERT INTO rol_permiso SELECT r.id, p.id FROM rol r JOIN permiso p
   ON (p.modulo, p.accion) IN (('PACIENTES','C'),('PACIENTES','R'),('PACIENTES','M'),('CITAS','C'),('CITAS','R'),('CITAS','M'),
-                              ('ESPECIALIDADES_MEDICOS','C'),('AGENDAS','C'),('PAGOS','C'),('PAGOS','R'),('EXAMENES','C'),('REPORTES','C'))
+                              ('ESPECIALIDADES_MEDICOS','C'),('AGENDAS','C'),('PAGOS','C'),('PAGOS','R'),('EXAMENES','C'),('REPORTES','C'),
+                              ('COMUNICACION','C'),('COMUNICACION','M'))
  WHERE r.nombre = 'RECEPCIONISTA';
 -- MEDICO
 INSERT INTO rol_permiso SELECT r.id, p.id FROM rol r JOIN permiso p
@@ -691,7 +786,9 @@ INSERT INTO rol_permiso SELECT r.id, p.id FROM rol r JOIN permiso p
 INSERT INTO parametro_sistema (clave, valor, descripcion) VALUES
  ('INTENTOS_MAX_LOGIN',   '3',  'Intentos fallidos antes de bloquear la cuenta'),
  ('MINUTOS_BLOQUEO',      '15', 'Minutos que dura el bloqueo temporal de la cuenta'),
- ('MINUTOS_ENLACE_RECUP', '30', 'Minutos de validez del enlace para recuperar contraseña');
+ ('MINUTOS_ENLACE_RECUP', '30', 'Minutos de validez del enlace para recuperar contraseña'),
+ ('HORAS_MINIMAS_CAMBIO', '24', 'Horas de anticipación con que el paciente puede cancelar o reprogramar su cita'),
+ ('MAX_REPROGRAMACIONES', '2',  'Veces que se puede reprogramar una misma cita');
 
 -- Administrador inicial
 WITH p AS (
@@ -703,11 +800,38 @@ SELECT p.id, (SELECT id FROM rol WHERE nombre = 'ADMINISTRADOR'), 'admin@clinica
        '$2y$10$EZzm0CFl83q5MiQmI6S/D.sROJR0GzMQUvrGGblizusuFnGgQ31Ui', TRUE
   FROM p;
 
--- ################ 04_vistas.sql ################
--- =====================================================================================
---  04_vistas.sql : vistas de consulta listas para pantallas y reportes
---  (los casos de uso pueden hacer SELECT directo a estas vistas)
--- =====================================================================================
+-- Catálogos que no tienen pantalla de alta (CU05 seguro médico, CU23 laboratorio)
+INSERT INTO aseguradora (nombre) VALUES
+ ('Caja Nacional de Salud'), ('Caja Petrolera de Salud'), ('Seguro Universitario (SSU)'),
+ ('Nacional Seguros'), ('Alianza Seguros'), ('Seguros Illimani');
+
+INSERT INTO tipo_examen (nombre, descripcion, costo) VALUES
+ ('Hemograma completo',      'Recuento de células de la sangre',            45.00),
+ ('Glucosa en ayunas',       'Control de azúcar en sangre',                 25.00),
+ ('Perfil lipídico',         'Colesterol y triglicéridos',                  80.00),
+ ('Examen general de orina', 'Análisis físico, químico y microscópico',     30.00),
+ ('Radiografía de tórax',    'Imagen del tórax',                           120.00),
+ ('Electrocardiograma',      'Actividad eléctrica del corazón',             90.00),
+ ('Ecografía abdominal',     'Imagen por ultrasonido del abdomen',         150.00),
+ ('Prueba de embarazo',      'Detección de hCG en sangre',                  35.00),
+ ('Hemoglobina glicosilada', 'Promedio de glucosa de los últimos 3 meses',  70.00),
+ ('Perfil tiroideo',         'TSH, T3 y T4',                               110.00);
+
+-- Base de conocimiento inicial del asistente virtual (CU25, CU26)
+INSERT INTO pregunta_frecuente (categoria, pregunta, respuesta, palabras_clave) VALUES
+ ('GENERAL',  '¿Cuál es el horario de atención?', 'Lunes a viernes de 08:00 a 19:00 y sábados de 08:00 a 13:00.', 'horario atención abierto hora'),
+ ('CITAS',    '¿Cómo saco una cita médica?', 'Inicie sesión (o cree su cuenta), entre a «Agendar cita», elija para quién es la cita, la especialidad y un horario disponible.', 'agendar cita reservar turno sacar ficha'),
+ ('CITAS',    '¿Puedo sacar una cita para mi hijo o un familiar?', 'Sí. En «Agendar cita» elija «Para otra persona» y escriba sus datos. Los avisos y el pago quedan en su cuenta.', 'hijo familiar otra persona menor'),
+ ('PAGOS',    '¿Qué métodos de pago aceptan?', 'Efectivo, tarjeta, QR, transferencia, pago en línea y seguro médico con copago.', 'pago pagar tarjeta qr efectivo métodos seguro'),
+ ('CITAS',    '¿Puedo cancelar o reprogramar mi cita?', 'Sí, hasta 24 horas antes desde «Mis citas» o llamando a recepción.', 'cancelar reprogramar cambiar cita'),
+ ('CITAS',    '¿Qué pasa si no puedo asistir?', 'Avise con anticipación. Las inasistencias repetidas pueden limitar nuevas reservas.', 'inasistencia faltar asistir'),
+ ('PAGOS',    '¿Recibiré un comprobante?', 'Sí, al confirmar el pago se emite un comprobante con número correlativo.', 'comprobante factura recibo'),
+ ('EXAMENES', '¿Cómo veo mis resultados de laboratorio?', 'Ingrese a «Resultados de laboratorio»; le avisaremos cuando estén listos.', 'resultados laboratorio examen'),
+ ('CUENTA',   '¿Ya me atendí en la clínica, cómo veo mi historial en línea?', 'Cree su cuenta con su mismo CI y su fecha de nacimiento: el sistema la une a su expediente.', 'cuenta historial registrarme crear'),
+ ('CUENTA',   '¿Olvidé mi contraseña, qué hago?', 'En la pantalla de inicio pulse «¿Olvidó su contraseña?» y siga el enlace que llegará a su correo.', 'contraseña olvidé recuperar clave'),
+ ('GENERAL',  '¿Dónde está la clínica?', 'Estamos en Santa Cruz de la Sierra, Bolivia. Consulte la dirección exacta en recepción.', 'dirección ubicación donde');
+
+-- ======================= 5. VISTAS ===================================================
 
 -- Cita con todos sus nombres (constancias, listados, agenda)
 CREATE OR REPLACE VIEW vw_citas_detalle AS
@@ -715,7 +839,8 @@ SELECT c.id, c.codigo, c.fecha, c.hora_inicio, c.hora_fin, c.estado, c.origen, c
        c.paciente_id, pp.ci AS paciente_ci, pp.nombres || ' ' || pp.apellidos AS paciente, pa.nro_expediente,
        c.medico_id, pm.nombres || ' ' || pm.apellidos AS medico, m.matricula,
        c.especialidad_id, e.nombre AS especialidad, e.costo_consulta,
-       pg.estado AS pago_estado, pg.monto, pg.metodo
+       pg.estado AS pago_estado, pg.monto, pg.metodo,
+       c.motivo_cancelacion, c.veces_reprogramada
   FROM cita c
   JOIN paciente pa     ON pa.persona_id = c.paciente_id
   JOIN persona pp      ON pp.id = c.paciente_id
@@ -790,13 +915,9 @@ SELECT e.id, e.tipo_evento, e.fecha_evento, pe.nombres || ' ' || pe.apellidos AS
   FROM evento_paciente e JOIN persona pe ON pe.id = e.paciente_id
  WHERE NOT e.procesado ORDER BY e.fecha_evento;
 
--- ################ 05_supabase_seguridad.sql ################
--- =====================================================================================
---  05_supabase_seguridad.sql : SOLO para Supabase (en PostgreSQL local es opcional)
---  Supabase expone por defecto las tablas del esquema public mediante su API REST.
---  Activar RLS sin crear políticas las deja cerradas para esa API (anon/authenticated).
---  La aplicación PHP no se ve afectada: se conecta con el rol postgres, que ignora RLS.
--- =====================================================================================
+-- ======================= 6. SEGURIDAD DE SUPABASE (RLS) ==============================
+-- Supabase expone las tablas del esquema public por su API REST. Activar RLS sin políticas
+-- las cierra para esa API. La aplicación PHP no se ve afectada (se conecta como postgres).
 DO $$
 DECLARE t RECORD;
 BEGIN

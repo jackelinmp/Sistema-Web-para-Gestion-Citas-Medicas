@@ -21,8 +21,8 @@ use App\Nucleo\Sesion;
  *  - El paciente debe hacerlo con HORAS_MINIMAS_CAMBIO de anticipación (24 h) y puede reprogramar
  *    una misma cita hasta MAX_REPROGRAMACIONES veces (2). Pasado eso, debe llamar a recepción.
  *  - Reprogramar mueve la MISMA cita (conserva código y pago) a otro cupo libre de la misma
- *    especialidad; el cupo anterior queda libre solo. Cancelar exige un motivo; el pago pendiente
- *    se anula y el pagado queda REEMBOLSADO (la devolución la hace recepción).
+ *    especialidad; el cupo anterior queda libre solo. Cancelar exige un motivo; el pago pendiente se anula
+ *    y el pago ya cobrado no se devuelve (política de la clínica: no hay devoluciones).
  */
 final class ControlReprogramarCancelarCita extends ControlBase
 {
@@ -135,7 +135,7 @@ final class ControlReprogramarCancelarCita extends ControlBase
         $this->redirigir('citas/proximas');
     }
 
-    /** Cancela la cita con su motivo; el cupo queda libre y el pago se anula o pasa a reembolso. */
+    /** Cancela la cita con su motivo; el cupo queda libre, el pago pendiente se anula y el cobrado no se devuelve. */
     public function cancelarCita(): void
     {
         $this->exigirAcceso();
@@ -162,8 +162,8 @@ final class ControlReprogramarCancelarCita extends ControlBase
             'Su cita ' . $cita['codigo'] . ' fue cancelada. Motivo: ' . mb_substr($motivo, 0, 200) . '.'
         );
         $detalle = (new Cita())->obtenerDetalle((int) $cita['id']);
-        $aviso = ($detalle['pago_estado'] ?? '') === 'REEMBOLSADO'
-            ? ' El pago de Bs ' . number_format((float) $detalle['monto'], 2, ',', '.') . ' queda para devolución en recepción.' : '';
+        $aviso = ($detalle['pago_estado'] ?? '') === 'PAGADO'
+            ? ' El pago de Bs ' . number_format((float) $detalle['monto'], 2, ',', '.') . ' no se devuelve (política de la clínica).' : '';
         Sesion::flash('ok', 'Cita ' . $cita['codigo'] . ' cancelada. El horario quedó libre.' . $aviso);
         $this->redirigir('citas/proximas');
     }

@@ -14,7 +14,7 @@ $mostrarPaciente = $mostrarPaciente ?? !$esPaciente;
   <?php if (Sesion::puede('CITAS', 'R')): ?><a class="btn" href="?r=citas/nueva">Nueva cita</a><?php endif; ?>
 </div>
 <?php if ($esPaciente): ?>
-  <p class="suave">Puede reprogramar o cancelar sus citas hasta 24 horas antes. Después, comuníquese con recepción.</p>
+  <p class="suave">Puede reprogramar o cancelar sus citas hasta 24 horas antes. Después, comuníquese con recepción. Si cancela una cita pagada, el pago no se devuelve.</p>
 <?php else: ?>
   <form class="filtros" method="get">
     <input type="hidden" name="r" value="citas/proximas">
@@ -34,7 +34,7 @@ $mostrarPaciente = $mostrarPaciente ?? !$esPaciente;
       <?php if ($mostrarPaciente): ?><td><?= e($c['paciente']) ?><br><small class="suave">CI <?= e($c['paciente_ci']) ?></small></td><?php endif; ?>
       <td><?= e($c['especialidad']) ?></td>
       <td><?= e($c['medico']) ?></td>
-      <td><?= insignia($c['estado']) ?><?php if ((int) $c['veces_reprogramada'] > 0): ?><br><small class="suave">Reprogramada <?= (int) $c['veces_reprogramada'] ?> vez/veces</small><?php endif; ?></td>
+      <td><?= insignia($c['estado']) ?><?php if ((int) $c['veces_reprogramada'] > 0): ?><br><small class="suave">Reprogramada <?= (int) $c['veces_reprogramada'] === 1 ? '1 vez' : (int) $c['veces_reprogramada'] . ' veces' ?></small><?php endif; ?></td>
       <td><?= insignia($c['pago_estado']) ?></td>
       <td><a class="btn pequeno secundario" href="?r=citas/cambiar&amp;id=<?= (int) $c['id'] ?>">Reprogramar o cancelar</a></td>
     </tr>

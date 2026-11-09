@@ -19,9 +19,40 @@ final class Cita extends EntidadBase
     /** CU13: cupos libres de un médico en una fecha (jornada - citas activas - bloqueos - horas pasadas). */
     public function cuposDisponibles(int $medico_id, string $fecha): array
     {
+        $this->anularCitasSinPago();     // una cita en línea sin pagar no ocupa el horario
         $st = $this->bd->prepare('SELECT hora_inicio, hora_fin FROM fn_cupos_disponibles(:medico, CAST(:fecha AS date))');
         $st->execute(['medico' => $medico_id, 'fecha' => $fecha]);
         return $st->fetchAll();
+    }
+
+    /**
+     * CU14/CU19/CU20: la cita solo se confirma pagando. Mientras se paga, el horario se aparta
+     * durante MINUTOS_PLAZO_PAGO (por defecto 30) para que nadie más lo pague al mismo tiempo (así no hay
+     * devoluciones). Si no paga en ese plazo, la cita se anula, el pago queda Anulado y el horario vuelve a estar libre.
+     * Si el paciente ya abrió el pago en Stripe (la sesión vence a los 31 minutos), se le dan 35 minutos más.
+     * Aplica a las citas en línea (portal y asistente) y a las de recepción, que se pagan en ese momento en ventanilla.
+     * No aplica a la cita que saca el médico: esa queda con pago pendiente hasta que el paciente la pague.
+     * Devuelve cuántas citas se anularon.
+     */
+    public function anularCitasSinPago(): int
+    {
+        $st = $this->bd->query("SELECT c.id, c.registrado_por
+                                  FROM cita c
+                                  JOIN pago p ON p.cita_id = c.id
+                                 WHERE c.estado = 'PROGRAMADA' AND p.estado = 'PENDIENTE'
+                                   AND c.origen <> 'MEDICO'
+                                   AND c.fecha_registro < now() - make_interval(mins =>
+                                         COALESCE((SELECT NULLIF(valor, '')::int FROM parametro_sistema
+                                                    WHERE clave = 'MINUTOS_PLAZO_PAGO'), 30)
+                                         + CASE WHEN p.referencia_externa IS NULL THEN 0 ELSE 35 END)
+                                   FOR UPDATE OF c SKIP LOCKED");
+        $vencidas = $st->fetchAll();
+        foreach ($vencidas as $c) {
+            $this->bd->prepare("UPDATE cita SET motivo_cancelacion = 'No se pagó dentro del plazo: el horario quedó libre'
+                                 WHERE id = :id")->execute(['id' => $c['id']]);
+            $this->cambiarEstado((int) $c['id'], 'CANCELADA', (int) $c['registrado_por']);
+        }
+        return count($vencidas);
     }
 
     /** CU14: registra la cita en estado PROGRAMADA. Devuelve id y código. */
